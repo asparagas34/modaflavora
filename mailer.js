@@ -126,7 +126,7 @@ function orderConfirmationEmail(order, items, settings) {
 
 function abandonedCartEmail(guestName, cartItems, cartTotal, settings) {
   const siteName = settings.site_name || 'FLAVORA';
-  const siteUrl = 'http://localhost:3000'; // production'da domain
+  const siteUrl = 'https://modaflavora.com'; // production'da domain
 
   let itemsHtml = '';
   try {

@@ -142,7 +142,7 @@
 
           <!-- Kişisel Bilgiler -->
           <div class="checkout-card">
-            <h3>👤 Kişisel Bilgiler</h3>
+            <h3>Kişisel Bilgiler</h3>
             <div class="form-group">
               <label>Ad Soyad *</label>
               <input type="text" name="name" id="nameInput" value="<%= user ? user.name : '' %>" required placeholder="Adınız ve soyadınız" autocomplete="name">
@@ -162,7 +162,7 @@
 
           <!-- Teslimat Adresi -->
           <div class="checkout-card">
-            <h3>📦 Teslimat Adresi</h3>
+            <h3>Teslimat Adresi</h3>
             <div class="form-row two-col">
               <div class="form-group">
                 <label>İl *</label>
@@ -193,13 +193,13 @@
 
           <!-- Ödeme Yöntemi -->
           <div class="checkout-card">
-            <h3>💳 Ödeme Yöntemi</h3>
+            <h3>Ödeme Yöntemi</h3>
             <div class="payment-options">
 
               <!-- Havale / EFT (her zaman göster) -->
               <label class="payment-option" onclick="showPaymentInfo('eft')">
                 <input type="radio" name="payment_method" value="eft" checked>
-                <span class="payment-option-icon">🏦</span>
+                <span class="payment-option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg></span>
                 <div class="payment-option-content">
                   <strong>EFT / Havale / FAST</strong>
                   <span><%= settings.payment_eft_desc || 'Banka hesabına güvenli ödeme gönderin — sipariş onaylanır' %></span>
