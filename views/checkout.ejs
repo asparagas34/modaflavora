@@ -176,9 +176,7 @@
               </div>
               <div class="form-group">
                 <label>İlçe *</label>
-                <select name="district" required id="districtSelect">
-                  <option value="">Önce il seçiniz...</option>
-                </select>
+                <input type="text" name="district" required placeholder="İlçenizi yazınız" id="districtInput">
               </div>
             </div>
             <div class="form-group">
@@ -287,7 +285,6 @@
 
   <%- include('partials/footer') %>
   <script src="/js/main.js"></script>
-  <script>var DISTRICTS = <%- districtsJSON %>;</script>
   <script>
     // Ödeme seçimi
     function showPaymentInfo(method) {
@@ -352,40 +349,18 @@
       });
     }
 
-    // İl → İlçe dropdown
+    // İl/İlçe localStorage kaydet
     const citySelect = document.getElementById('citySelect');
-    const districtSelect = document.getElementById('districtSelect');
-    if (citySelect && districtSelect) {
-      citySelect.addEventListener('change', function() {
-        const city = this.value;
-        districtSelect.innerHTML = '<option value="">Seçiniz...</option>';
-        if (city && DISTRICTS[city]) {
-          DISTRICTS[city].forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d;
-            opt.textContent = d;
-            districtSelect.appendChild(opt);
-          });
-        }
-        // localStorage'dan önceki seçimi yükle
-        const saved = localStorage.getItem('co_district');
-        const savedCity = localStorage.getItem('co_city');
-        if (saved && savedCity === city) {
-          districtSelect.value = saved;
-        }
-      });
-
-      // localStorage'dan önceki il/ilçe yükle
+    const districtInput = document.getElementById('districtInput');
+    if (citySelect) {
       const savedCity = localStorage.getItem('co_city');
-      if (savedCity && !citySelect.value) {
-        citySelect.value = savedCity;
-        citySelect.dispatchEvent(new Event('change'));
+      if (savedCity && !citySelect.value) citySelect.value = savedCity;
+      if (districtInput) {
+        districtInput.value = localStorage.getItem('co_district') || '';
       }
-
-      // Form gönderilince kaydet
       document.getElementById('checkoutForm').addEventListener('submit', () => {
         if (citySelect.value) localStorage.setItem('co_city', citySelect.value);
-        if (districtSelect.value) localStorage.setItem('co_district', districtSelect.value);
+        if (districtInput && districtInput.value) localStorage.setItem('co_district', districtInput.value);
       });
     }
   </script>

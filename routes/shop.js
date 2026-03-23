@@ -7,8 +7,6 @@ const { trackEvent } = require('../tracker');
 const capi = require('../meta-capi');
 const { sendMail, orderConfirmationEmail } = require('../mailer');
 const { logCheckoutVisit, markCartRecovered } = require('../abandoned-cart');
-const DISTRICTS_DATA = require('../districts-data');
-
 // Homepage
 router.get('/', (req, res) => {
   const categories = db.prepare(
@@ -205,8 +203,7 @@ router.get('/siparis', (req, res) => {
   }
   trackEvent('checkout');
   try { capi.trackInitiateCheckout(req, req.session.cart); } catch (e) {}
-  const districtsJSON = JSON.stringify(DISTRICTS_DATA);
-  res.render('checkout', { districtsJSON });
+  res.render('checkout');
 });
 router.get('/odeme', (req, res) => res.redirect('/siparis'));
 
