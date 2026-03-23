@@ -1584,7 +1584,7 @@ body { overflow-x: clip; max-width: 100vw; }
 }
 
 /* ═══ ÜRÜN DETAY - GALERİ ═══ */
-.product-gallery { min-width: 0; overflow: hidden; }
+.product-gallery { min-width: 0; }
 .gallery-layout { display: flex; gap: 10px; width: 100%; min-width: 0; }
 .gallery-thumbs {
   display: flex; flex-direction: column; gap: 8px;
@@ -1655,8 +1655,8 @@ body { overflow-x: clip; max-width: 100vw; }
 
 /* Mobile galeri düzeltmesi */
 @media (max-width: 768px) {
-  .product-gallery { width: 100%; max-width: 100%; }
-  .gallery-layout { flex-direction: column; width: 100%; max-width: 100%; }
+  .product-gallery { width: 100%; max-width: 100%; overflow: visible; }
+  .gallery-layout { flex-direction: column-reverse; width: 100%; overflow: visible; }
   .gallery-thumbs {
     flex-direction: row;
     min-width: 0;
@@ -1671,8 +1671,8 @@ body { overflow-x: clip; max-width: 100vw; }
   }
   .gallery-thumbs::-webkit-scrollbar { display: none; }
   .gallery-thumb { width: 56px; height: 68px; flex-shrink: 0; }
-  .gallery-main { width: 100%; min-width: 0; overflow: visible; border-radius: 8px; }
-  .gallery-main img { width: 100%; height: auto; display: block; object-fit: unset; }
+  .gallery-main { width: 100%; overflow: visible; border-radius: 8px; }
+  .gallery-main img { width: 100%; height: auto; display: block; }
 
   /* Features bar - mobilte dikey */
   .product-features {
