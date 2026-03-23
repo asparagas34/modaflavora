@@ -287,11 +287,7 @@
 
   <%- include('partials/footer') %>
   <script src="/js/main.js"></script>
-  <script src="/js/districts.js"></script>
-  <script>
-    // Fallback: districts.js harici dosyası yüklenmediyse inline veri kullan
-    if (typeof DISTRICTS === 'undefined') { var DISTRICTS = <%- districtsJSON %>; }
-  </script>
+  <script>var DISTRICTS = <%- districtsJSON %>;</script>
   <script>
     // Ödeme seçimi
     function showPaymentInfo(method) {
