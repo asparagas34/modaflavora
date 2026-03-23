@@ -11,7 +11,7 @@
     <% if (sliders.length > 0) { %>
       <% sliders.forEach((slide, i) => { %>
       <div class="slide <%= i === 0 ? 'active' : '' %>">
-        <img src="<%= slide.image %>" alt="<%= slide.title %>">
+        <img src="<%= slide.image %>" alt="<%= slide.title %>" <%= i > 0 ? 'loading="lazy"' : '' %>>
         <div class="slide-content">
           <% if (slide.title) { %><h2><%= slide.title %></h2><% } %>
           <% if (slide.subtitle) { %><p><%= slide.subtitle %></p><% } %>
@@ -44,7 +44,7 @@
         <% categories.forEach(cat => { %>
         <a href="/urunler?kategori=<%= cat.slug %>" class="category-card">
           <% if (cat.image) { %>
-          <img src="<%= cat.image %>" alt="<%= cat.name %>">
+          <img src="<%= cat.image %>" alt="<%= cat.name %>" loading="lazy">
           <% } else { %>
           <div class="category-placeholder"></div>
           <% } %>
