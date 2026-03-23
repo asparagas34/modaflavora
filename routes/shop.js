@@ -204,7 +204,16 @@ router.get('/siparis', (req, res) => {
   }
   trackEvent('checkout');
   try { capi.trackInitiateCheckout(req, req.session.cart); } catch (e) {}
-  res.render('checkout');
+  // Districts verisini inline olarak gönder
+  let districtsJSON = '{}';
+  try {
+    const fs = require('fs');
+    const p = require('path');
+    const content = fs.readFileSync(p.join(__dirname, '../public/js/districts.js'), 'utf8');
+    const m = content.match(/const DISTRICTS = (\{[\s\S]*\});/);
+    if (m) districtsJSON = m[1];
+  } catch (e) {}
+  res.render('checkout', { districtsJSON });
 });
 router.get('/odeme', (req, res) => res.redirect('/siparis'));
 
