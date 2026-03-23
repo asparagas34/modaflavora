@@ -1,0 +1,212 @@
+<!-- Trust badges -->
+<section class="trust-badges">
+  <div class="container">
+    <div class="badges-grid">
+      <div class="badge-item">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+        <div>
+          <strong>256 Bit SSL</strong>
+          <span>Güvenli Alışveriş</span>
+        </div>
+      </div>
+      <div class="badge-item">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+        <div>
+          <strong><%= settings.free_shipping_limit || '2000' %>₺ Üzeri</strong>
+          <span>Ücretsiz Kargo</span>
+        </div>
+      </div>
+      <div class="badge-item">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+        </svg>
+        <div>
+          <strong>Değişim & İade</strong>
+          <span>14 Gün Garantisi</span>
+        </div>
+      </div>
+      <div class="badge-item">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+        </svg>
+        <div>
+          <strong>7/24 Destek</strong>
+          <span><%= settings.phone %></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Newsletter -->
+<section class="newsletter">
+  <div class="container">
+    <h3>Kampanyalardan Haberdar Olun</h3>
+    <p>E-posta adresinizi girerek özel indirim ve kampanyalardan ilk siz haberdar olun.</p>
+    <form class="newsletter-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='Kayıt Olundu!'; this.querySelector('button').disabled=true;">
+      <input type="email" placeholder="E-posta adresiniz" required>
+      <button type="submit">ABONE OL</button>
+    </form>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4><%= settings.site_name || 'FLAVORA' %></h4>
+        <p><%= settings.site_description %></p>
+        <div class="social-links">
+          <a href="<%= settings.instagram %>" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+          </a>
+          <a href="<%= settings.facebook %>" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </a>
+          <a href="<%= settings.pinterest %>" aria-label="Pinterest" target="_blank" rel="noopener noreferrer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12.017 24c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641 0 12.017 0z"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Kategoriler</h4>
+        <ul>
+          <li><a href="/urunler">Tüm Ürünler</a></li>
+          <li><a href="/urunler?siralama=yeni">Yeni Gelenler</a></li>
+          <li><a href="/urunler?indirim=1">İndirimli Ürünler</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Hesabım</h4>
+        <ul>
+          <% if (user) { %>
+          <li><a href="/siparislerim">Siparişlerim</a></li>
+          <li><a href="/favoriler">Favorilerim</a></li>
+          <li><a href="/auth/cikis">Çıkış Yap</a></li>
+          <% } else { %>
+          <li><a href="/auth/giris">Giriş Yap</a></li>
+          <li><a href="/auth/kayit">Kayıt Ol</a></li>
+          <% } %>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Bilgi</h4>
+        <ul>
+          <li><a href="#">Hakkımızda</a></li>
+          <li><a href="#">Gizlilik Sözleşmesi</a></li>
+          <li><a href="#">KVKK Aydınlatma Metni</a></li>
+          <li><a href="#">İletişim</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; 2026 <%= settings.site_name || 'FLAVORA' %>. Tüm hakları saklıdır.</p>
+      <div class="payment-icons">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect width='40' height='25' rx='3' fill='%231a1f71'/%3E%3Ctext x='20' y='16' text-anchor='middle' fill='white' font-size='10' font-weight='bold'%3EVISA%3C/text%3E%3C/svg%3E" alt="Visa">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect width='40' height='25' rx='3' fill='%23252525'/%3E%3Ccircle cx='16' cy='12.5' r='7' fill='%23eb001b'/%3E%3Ccircle cx='24' cy='12.5' r='7' fill='%23f79e1b'/%3E%3C/svg%3E" alt="Mastercard">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect width='40' height='25' rx='3' fill='%23003087'/%3E%3Ctext x='20' y='16' text-anchor='middle' fill='white' font-size='8' font-weight='bold'%3EPayPal%3C/text%3E%3C/svg%3E" alt="PayPal">
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Cart notification -->
+<div class="cart-toast" id="cartToast">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+  <span>Ürün sepete eklendi!</span>
+</div>
+
+<!-- ===== SEPET ÇEKMECESİ ===== -->
+<div class="cart-drawer-overlay" id="cartDrawerOverlay"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-drawer-header">
+    <h3>🛒 Sepetim <span class="cart-drawer-count" id="drawerCount">0</span></h3>
+    <button class="cart-drawer-close" id="cartDrawerClose" aria-label="Kapat">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="cart-drawer-items" id="cartDrawerItems">
+    <div class="cart-drawer-empty" id="cartDrawerEmpty">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+      <p>Sepetiniz boş</p>
+      <a href="/urunler" class="btn-go-shop">Alışverişe Başla</a>
+    </div>
+  </div>
+
+  <div class="cart-drawer-footer" id="cartDrawerFooter" style="display:none;">
+    <div class="cart-drawer-shipping-bar" id="shippingBar"></div>
+    <div class="cart-drawer-total">
+      <span>Ara Toplam</span>
+      <strong id="drawerTotal">0 ₺</strong>
+    </div>
+    <div class="cart-drawer-total" style="font-size:12px;color:#6b7280;border-top:none;padding-top:0;">
+      <span>Kargo</span>
+      <span id="drawerShipping">Hesaplanıyor</span>
+    </div>
+    <a href="/sepet" class="cart-drawer-btn-cart">Sepeti Görüntüle</a>
+    <a href="/odeme" class="cart-drawer-btn-checkout">Ödemeye Geç →</a>
+  </div>
+</div>
+
+<!-- Meta Pixel & Google Analytics -->
+<% if (settings.meta_pixel_active === '1' && settings.meta_pixel_id) { %>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window,document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '<%= settings.meta_pixel_id %>');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=<%= settings.meta_pixel_id %>&ev=PageView&noscript=1"/></noscript>
+<!-- End Meta Pixel Code -->
+<% } %>
+
+<% if (settings.google_analytics_active === '1' && settings.google_analytics_id) { %>
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=<%= settings.google_analytics_id %>"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '<%= settings.google_analytics_id %>');
+</script>
+<% } %>
+
+<!-- Organization Schema (tüm sayfalar) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "<%= settings.site_name %>",
+  "description": "<%= settings.site_description %>",
+  "url": "<%= typeof seoCanonical !== 'undefined' && seoCanonical ? seoCanonical.split('/').slice(0,3).join('/') : '' %>",
+  "telephone": "<%= settings.phone %>",
+  "email": "<%= settings.email %>",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "<%= settings.address %>"
+  }
+  <% if (settings.instagram && settings.instagram !== '#') { %>
+  ,"sameAs": ["<%= settings.instagram %>"<% if (settings.facebook && settings.facebook !== '#') { %>, "<%= settings.facebook %>"<% } %><% if (settings.pinterest && settings.pinterest !== '#') { %>, "<%= settings.pinterest %>"<% } %>]
+  <% } %>
+}
+</script>

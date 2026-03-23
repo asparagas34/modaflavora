@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <%- include('partials/seo-head') %>
+</head>
+<body>
+  <%- include('partials/header') %>
+
+  <!-- Hero Slider -->
+  <section class="hero-slider" id="heroSlider">
+    <% if (sliders.length > 0) { %>
+      <% sliders.forEach((slide, i) => { %>
+      <div class="slide <%= i === 0 ? 'active' : '' %>">
+        <img src="<%= slide.image %>" alt="<%= slide.title %>">
+        <div class="slide-content">
+          <% if (slide.title) { %><h2><%= slide.title %></h2><% } %>
+          <% if (slide.subtitle) { %><p><%= slide.subtitle %></p><% } %>
+          <% if (slide.link) { %><a href="<%= slide.link %>" class="btn btn-white">ALIŞVERİŞE BAŞLA</a><% } %>
+        </div>
+      </div>
+      <% }); %>
+      <button class="slider-btn prev" onclick="changeSlide(-1)">&#10094;</button>
+      <button class="slider-btn next" onclick="changeSlide(1)">&#10095;</button>
+      <div class="slider-dots">
+        <% sliders.forEach((s, i) => { %>
+        <span class="dot <%= i === 0 ? 'active' : '' %>" onclick="goToSlide(<%= i %>)"></span>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="hero-placeholder">
+        <h1><%= settings.site_name %></h1>
+        <p><%= settings.site_description %></p>
+        <a href="/urunler" class="btn btn-primary">ALIŞVERİŞE BAŞLA</a>
+      </div>
+    <% } %>
+  </section>
+
+  <!-- Categories -->
+  <% if (categories.length > 0) { %>
+  <section class="section categories-section">
+    <div class="container">
+      <h2 class="section-title">KATEGORİLER</h2>
+      <div class="categories-grid">
+        <% categories.forEach(cat => { %>
+        <a href="/urunler?kategori=<%= cat.slug %>" class="category-card">
+          <% if (cat.image) { %>
+          <img src="<%= cat.image %>" alt="<%= cat.name %>">
+          <% } else { %>
+          <div class="category-placeholder"></div>
+          <% } %>
+          <span><%= cat.name %></span>
+        </a>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- New Arrivals -->
+  <% if (newProducts.length > 0) { %>
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">YENİ GELENLER</h2>
+      <div class="products-grid">
+        <% newProducts.forEach(product => { %>
+          <%- include('partials/product-card', { product }) %>
+        <% }); %>
+      </div>
+      <div class="section-cta">
+        <a href="/urunler?siralama=yeni" class="btn btn-outline">TÜMÜNÜ GÖR</a>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- Promo Banner -->
+  <section class="promo-banner">
+    <div class="container">
+      <div class="promo-content">
+        <h2>SEÇİLİ ÜRÜNLERDE<br><span>%30 İNDİRİM</span></h2>
+        <p>Sezonun en trend parçaları şimdi indirimde!</p>
+        <a href="/urunler?indirim=1" class="btn btn-white">İNDİRİMLERİ KEŞFET</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Products -->
+  <% if (featuredProducts.length > 0) { %>
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">ÖNE ÇIKANLAR</h2>
+      <div class="products-grid">
+        <% featuredProducts.forEach(product => { %>
+          <%- include('partials/product-card', { product }) %>
+        <% }); %>
+      </div>
+      <div class="section-cta">
+        <a href="/urunler" class="btn btn-outline">TÜMÜNÜ GÖR</a>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- Sale Products -->
+  <% if (saleProducts.length > 0) { %>
+  <section class="section section-gray">
+    <div class="container">
+      <h2 class="section-title">İNDİRİMLİ ÜRÜNLER</h2>
+      <div class="products-grid">
+        <% saleProducts.forEach(product => { %>
+          <%- include('partials/product-card', { product }) %>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <%- include('partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

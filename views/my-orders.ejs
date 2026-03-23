@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <%- include('partials/seo-head') %>
+</head>
+<body>
+  <%- include('partials/header') %>
+  <div class="page-header"><div class="container"><h1>SİPARİŞLERİM</h1></div></div>
+  <section class="section">
+    <div class="container">
+      <% if (orders.length > 0) { %>
+      <div class="orders-table-wrap">
+      <table class="orders-table">
+        <thead><tr><th>Sipariş No</th><th>Tarih</th><th>Toplam</th><th>Durum</th></tr></thead>
+        <tbody>
+          <% const statusMap = { pending: 'Beklemede', processing: 'Hazırlanıyor', shipped: 'Kargoda', delivered: 'Teslim Edildi', cancelled: 'İptal Edildi' }; %>
+          <% orders.forEach(order => { %>
+          <tr>
+            <td>#<%= order.id %></td>
+            <td><%= new Date(order.created_at).toLocaleDateString('tr-TR') %></td>
+            <td><%= order.total.toLocaleString('tr-TR') %> ₺</td>
+            <td><span class="status-badge status-<%= order.status %>"><%= statusMap[order.status] || order.status %></span></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      </div>
+      <% } else { %>
+      <div class="empty-state">
+        <h3>Henüz siparişiniz bulunmamaktadır</h3>
+        <a href="/urunler" class="btn btn-primary">ALIŞVERİŞE BAŞLA</a>
+      </div>
+      <% } %>
+    </div>
+  </section>
+  <%- include('partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

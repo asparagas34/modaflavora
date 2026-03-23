@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <%- include('partials/seo-head') %>
+  <style>
+    .os-wrap { max-width:560px; margin:0 auto; padding:40px 16px 80px; }
+
+    /* ── Üst kart ── */
+    .os-header {
+      text-align:center; padding:36px 24px 28px;
+      background:#fff; border-radius:16px;
+      border:1px solid #e5e7eb; margin-bottom:16px;
+    }
+    .os-header .os-icon { font-size:44px; display:block; margin-bottom:14px; }
+    .os-header h2 { font-size:20px; font-weight:800; margin:0 0 6px; color:#111; }
+    .os-header .os-sub { font-size:13px; color:#6b7280; margin:0 0 4px; line-height:1.5; }
+    .os-header .os-badge {
+      display:inline-block; background:#111; color:#fff;
+      border-radius:8px; padding:6px 18px; font-weight:700;
+      font-size:14px; margin-top:14px; letter-spacing:.4px;
+    }
+
+    /* ── Geri sayım ── */
+    .os-timer {
+      display:flex; align-items:center; gap:14px;
+      background:#fff; border:1.5px solid #e5e7eb;
+      border-radius:14px; padding:16px 20px; margin-bottom:16px;
+      transition:border-color .4s, background .4s;
+    }
+    .os-timer-icon { font-size:24px; flex-shrink:0; }
+    .os-timer-body { flex:1; min-width:0; }
+    .os-timer-body strong { display:block; font-size:13px; font-weight:700; color:#111; }
+    .os-timer-body span { font-size:12px; color:#6b7280; }
+    .os-timer-num {
+      font-size:30px; font-weight:800; color:#111;
+      font-variant-numeric:tabular-nums; letter-spacing:1px; flex-shrink:0;
+      transition:color .4s;
+    }
+    .os-timer.urgent { background:#fff7ed; border-color:#fdba74; }
+    .os-timer.urgent .os-timer-num { color:#ea580c; }
+    .os-timer.danger { background:#fef2f2; border-color:#fca5a5; }
+    .os-timer.danger .os-timer-num { color:#dc2626; }
+    .os-timer.expired { background:#f3f4f6; border-color:#d1d5db; }
+    .os-timer.expired .os-timer-num { color:#9ca3af; }
+
+    /* ── Banka kutusu ── */
+    .os-bank {
+      background:#fff; border:1px solid #e5e7eb;
+      border-radius:14px; overflow:hidden; margin-bottom:16px;
+    }
+    .os-bank-head {
+      background:#f9fafb; border-bottom:1px solid #e5e7eb;
+      padding:14px 20px; display:flex; align-items:center; gap:8px;
+      font-size:13px; font-weight:700; color:#111;
+    }
+    .os-bank-row {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:13px 20px; border-bottom:1px solid #f3f4f6; font-size:13px;
+    }
+    .os-bank-row:last-child { border-bottom:none; }
+    .os-bank-row .lbl { color:#6b7280; font-weight:500; }
+    .os-bank-row .val { font-weight:700; color:#111; display:flex; align-items:center; gap:8px; }
+    .os-bank-row .val.amount { font-size:16px; color:#111; }
+    .os-copy {
+      background:none; border:1px solid #e5e7eb; border-radius:6px;
+      padding:3px 10px; font-size:11px; font-weight:600; color:#555;
+      cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap;
+    }
+    .os-copy:hover { border-color:#111; color:#111; }
+    .os-copy.copied { border-color:#16a34a; color:#16a34a; }
+    .os-bank-note {
+      margin:0; padding:13px 20px;
+      background:#f9fafb; border-top:1px solid #f3f4f6;
+      font-size:12px; color:#6b7280; line-height:1.6;
+    }
+
+    /* Banka bilgisi girilmemiş uyarısı */
+    .os-bank-empty {
+      padding:24px 20px; text-align:center; color:#9ca3af; font-size:13px;
+    }
+    .os-bank-empty strong { display:block; color:#6b7280; margin-bottom:4px; }
+
+    /* ── Onaylandı kartı ── */
+    .os-confirmed {
+      display:none; text-align:center;
+      background:#f0fdf4; border:1.5px solid #86efac;
+      border-radius:14px; padding:24px; margin-bottom:16px;
+    }
+    .os-confirmed.show { display:block; }
+    .os-confirmed .big { font-size:40px; margin-bottom:8px; }
+    .os-confirmed h3 { font-size:17px; font-weight:700; color:#166534; margin:0 0 4px; }
+    .os-confirmed p { font-size:13px; color:#4b7c6e; margin:0; }
+
+    /* ── Kontrol butonu ── */
+    .os-check-wrap { margin-bottom:16px; }
+    .os-check-btn {
+      width:100%; padding:14px; border-radius:12px;
+      background:#111; color:#fff; border:none;
+      font-size:14px; font-weight:700; font-family:inherit;
+      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:background .15s;
+    }
+    .os-check-btn:hover:not(:disabled) { background:#333; }
+    .os-check-btn:disabled { background:#e5e7eb; color:#9ca3af; cursor:not-allowed; }
+    .os-status-msg { text-align:center; font-size:13px; font-weight:600; margin-top:10px; }
+    .os-status-msg.wait { color:#d97706; }
+    .os-status-msg.ok   { color:#16a34a; }
+    .os-hint { text-align:center; font-size:11px; color:#9ca3af; margin-top:6px; }
+
+    /* ── Linkler ── */
+    .os-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .os-actions .btn { flex:1; min-width:140px; text-align:center; }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Progress Steps */
+    .checkout-steps { display:flex; align-items:center; justify-content:center; max-width:480px; margin:0 auto 28px; position:relative; }
+    .checkout-step { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; position:relative; z-index:1; }
+    .checkout-step .step-num {
+      width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700; flex-shrink:0; border:2px solid #e5e7eb; color:#9ca3af; background:#fff;
+    }
+    .checkout-step.active .step-num { border-color:#111; color:#fff; background:#111; }
+    .checkout-step.done .step-num { border-color:#111; color:#fff; background:#111; }
+    .checkout-step .step-label { font-size:12px; font-weight:600; color:#9ca3af; }
+    .checkout-step.active .step-label,
+    .checkout-step.done .step-label { color:#111; }
+    .checkout-steps::before {
+      content:''; position:absolute; top:16px; left:16%; right:16%;
+      height:2px; background:#e5e7eb; z-index:0;
+    }
+    .checkout-steps::after {
+      content:''; position:absolute; top:16px; left:16%;
+      width:67%; height:2px; background:#111; z-index:0;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/header') %>
+
+  <section class="section">
+    <div class="os-wrap">
+
+      <!-- Adım Göstergesi -->
+      <div class="checkout-steps">
+        <div class="checkout-step done">
+          <span class="step-num">✓</span>
+          <span class="step-label">Sepet</span>
+        </div>
+        <div class="checkout-step done">
+          <span class="step-num">✓</span>
+          <span class="step-label">Bilgiler & Ödeme</span>
+        </div>
+        <div class="checkout-step active">
+          <span class="step-num">3</span>
+          <span class="step-label">Onay</span>
+        </div>
+      </div>
+
+      <% const pm = (typeof paymentMethod !== 'undefined') ? paymentMethod : 'eft'; %>
+
+      <!-- Başlık -->
+      <div class="os-header">
+        <% if (pm === 'eft') { %>
+          <span class="os-icon">🏦</span>
+          <h2>Ödemenizi Bekliyoruz</h2>
+          <p class="os-sub">Siparişiniz oluşturuldu ancak <strong>ödeme henüz alınmadı.</strong></p>
+          <p class="os-sub">Aşağıdaki hesaba ödemenizi gönderin, onaylandıktan sonra siparişiniz hazırlanmaya başlayacak.</p>
+        <% } else { %>
+          <span class="os-icon">✅</span>
+          <h2>Siparişiniz Onaylandı!</h2>
+          <p class="os-sub">En kısa sürede hazırlanarak kargoya verilecektir.</p>
+        <% } %>
+        <span class="os-badge">#<%= orderId %> &nbsp;·&nbsp; <%= total.toLocaleString('tr-TR') %> ₺</span>
+      </div>
+
+      <% if (pm === 'eft') { %>
+
+      <!-- Geri Sayım -->
+      <div class="os-timer" id="osTimer">
+        <span class="os-timer-icon" id="timerIcon">⏱️</span>
+        <div class="os-timer-body">
+          <strong id="timerLabel">Ödeme için kalan süre</strong>
+          <span id="timerSub">30 dakika içinde ödeme alınmazsa sipariş iptal edilecektir</span>
+        </div>
+        <div class="os-timer-num" id="timerNum">30:00</div>
+      </div>
+
+      <!-- Banka Bilgileri -->
+      <div class="os-bank">
+        <div class="os-bank-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          Ödeme Bilgileri
+        </div>
+
+        <% const hasBank = settings.bank_iban || settings.bank_name || settings.bank_holder; %>
+        <% if (hasBank) { %>
+
+          <% if (settings.bank_holder) { %>
+          <div class="os-bank-row">
+            <span class="lbl">Hesap Sahibi</span>
+            <span class="val">
+              <span id="holderVal"><%= settings.bank_holder %></span>
+              <button class="os-copy" onclick="copyEl('holderVal',this)">Kopyala</button>
+            </span>
+          </div>
+          <% } %>
+
+          <% if (settings.bank_name) { %>
+          <div class="os-bank-row">
+            <span class="lbl">Banka</span>
+            <span class="val"><%= settings.bank_name %></span>
+          </div>
+          <% } %>
+
+          <% if (settings.bank_iban) { %>
+          <div class="os-bank-row">
+            <span class="lbl">IBAN</span>
+            <span class="val">
+              <span id="ibanVal" style="font-family:monospace;font-size:13px;letter-spacing:.3px;"><%= settings.bank_iban %></span>
+              <button class="os-copy" onclick="copyEl('ibanVal',this)">Kopyala</button>
+            </span>
+          </div>
+          <% } %>
+
+          <div class="os-bank-row">
+            <span class="lbl">Tutar</span>
+            <span class="val amount">
+              <span id="amtVal"><%= total.toLocaleString('tr-TR') %> ₺</span>
+              <button class="os-copy" onclick="copyEl('amtVal',this)">Kopyala</button>
+            </span>
+          </div>
+
+          <div class="os-bank-row">
+            <span class="lbl">Açıklama</span>
+            <span class="val">
+              <span id="descVal">#<%= orderId %></span>
+              <button class="os-copy" onclick="copyEl('descVal',this)">Kopyala</button>
+            </span>
+          </div>
+
+          <p class="os-bank-note">
+            🏦 Tüm bankalardan EFT, Havale ve FAST ile ödeme yapabilirsiniz.
+          </p>
+
+        <% } else { %>
+          <div class="os-bank-empty">
+            <strong>Banka bilgileri henüz girilmemiş</strong>
+            Lütfen satıcı ile iletişime geçiniz.
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Onaylandı (gizli) -->
+      <div class="os-confirmed" id="osConfirmed">
+        <div class="big">✅</div>
+        <h3>Ödemeniz Onaylandı!</h3>
+        <p>Siparişiniz hazırlanmaya başlandı, kargo bilgileriniz iletilecek.</p>
+      </div>
+
+      <!-- Durum Kontrol -->
+      <div class="os-check-wrap" id="osCheckWrap">
+        <button class="os-check-btn" id="checkBtn" onclick="checkStatus()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+          </svg>
+          Ödeme Durumunu Kontrol Et
+        </button>
+        <div class="os-status-msg" id="statusMsg" style="display:none"></div>
+        <div class="os-hint">Ödemeyi gönderdikten sonra tıklayın</div>
+      </div>
+
+      <% } else { %>
+      <div class="os-confirmed show">
+        <div class="big">🎉</div>
+        <h3>Siparişiniz Onaylandı!</h3>
+        <p>En kısa sürede kargoya verilecektir.</p>
+      </div>
+      <% } %>
+
+      <!-- Linkler -->
+      <% if (user) { %>
+      <div class="os-actions">
+        <a href="/siparislerim" class="btn btn-outline">SİPARİŞLERİM</a>
+      </div>
+      <% } %>
+
+    </div>
+  </section>
+
+  <%- include('partials/footer') %>
+  <script src="/js/main.js"></script>
+  <script>
+    // ── Geri Sayım ──
+    const timerEl  = document.getElementById('timerNum');
+    const timerBox = document.getElementById('osTimer');
+    const timerLbl = document.getElementById('timerLabel');
+    const timerSub = document.getElementById('timerSub');
+    const timerIco = document.getElementById('timerIcon');
+    let remaining  = 30 * 60;
+
+    if (timerEl) {
+      const iv = setInterval(() => {
+        remaining--;
+
+        if (remaining <= 0) {
+          clearInterval(iv);
+          timerEl.textContent = '00:00';
+          timerLbl.textContent = 'Süre doldu — sipariş iptal edildi';
+          timerSub.textContent = 'Ödeme süresi geçti. Yeni sipariş oluşturabilirsiniz.';
+          timerIco.textContent = '🚫';
+          timerBox.className = 'os-timer expired';
+          const btn = document.getElementById('checkBtn');
+          if (btn) { btn.disabled = true; }
+          return;
+        }
+
+        const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+        const s = String(remaining % 60).padStart(2, '0');
+        timerEl.textContent = `${m}:${s}`;
+
+        if (remaining <= 300) {
+          timerBox.className = 'os-timer danger';
+          timerIco.textContent = '🚨';
+          timerLbl.textContent = 'Son dakikalar! Hemen ödeme yapın';
+        } else if (remaining <= 600) {
+          timerBox.className = 'os-timer urgent';
+          timerIco.textContent = '⚠️';
+        }
+      }, 1000);
+    }
+
+    // ── Kopyala ──
+    function copyEl(id, btn) {
+      const txt = document.getElementById(id).textContent.trim();
+      navigator.clipboard.writeText(txt).then(() => {
+        btn.textContent = '✓ Kopyalandı';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Kopyala'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    // ── Durum Kontrol ──
+    async function checkStatus() {
+      const btn = document.getElementById('checkBtn');
+      const msg = document.getElementById('statusMsg');
+      btn.disabled = true;
+      btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .8s linear infinite"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Kontrol ediliyor...';
+
+      try {
+        const r    = await fetch('/api/order/status/<%= orderId %>');
+        const data = await r.json();
+        msg.style.display = 'block';
+
+        if (data.confirmed) {
+          msg.className = 'os-status-msg ok';
+          msg.textContent = '✅ Ödeme onaylandı! Yönlendiriliyorsunuz...';
+          setTimeout(() => {
+            window.location.href = '/siparis/tebrikler?id=<%= orderId %>';
+          }, 1000);
+        } else {
+          msg.className = 'os-status-msg wait';
+          msg.textContent = '⏳ Henüz onaylanmadı, biraz bekleyin';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Tekrar Kontrol Et';
+          }, 5000);
+          return;
+        }
+      } catch(e) {
+        msg.style.display = 'block';
+        msg.className = 'os-status-msg wait';
+        msg.textContent = '⚠️ Bağlantı hatası, tekrar deneyin';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Tekrar Kontrol Et';
+        }, 3000);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>İstatistikler - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .stats-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+    .stat-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); display:flex; align-items:center; gap:16px; }
+    .stat-icon { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .stat-icon.blue { background:#eff6ff; color:#3b82f6; }
+    .stat-icon.green { background:#f0fdf4; color:#22c55e; }
+    .stat-icon.orange { background:#fff7ed; color:#f97316; }
+    .stat-icon.purple { background:#faf5ff; color:#a855f7; }
+    .stat-number { font-size:26px; font-weight:700; color:#111; }
+    .stat-label { font-size:12px; color:#6b7280; margin-top:2px; }
+    .chart-card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .chart-card h3 { font-size:14px; font-weight:600; color:#374151; margin:0 0 16px; }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:20px; }
+    .filter-bar { background:#fff; border-radius:12px; padding:16px 20px; box-shadow:0 1px 4px rgba(0,0,0,.06); margin-bottom:20px; display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+    .filter-bar .quick-btns { display:flex; gap:6px; flex-wrap:wrap; }
+    .quick-btn { padding:6px 14px; border-radius:8px; border:1px solid #e5e7eb; background:#f9fafb; font-size:12px; font-weight:500; color:#374151; cursor:pointer; text-decoration:none; transition:all .15s; }
+    .quick-btn:hover, .quick-btn.active { background:#3b82f6; color:#fff; border-color:#3b82f6; }
+    .filter-divider { width:1px; height:28px; background:#e5e7eb; margin:0 4px; }
+    .date-inputs { display:flex; align-items:center; gap:8px; }
+    .date-inputs input[type=date] { padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; font-family:inherit; color:#374151; background:#f9fafb; }
+    .date-inputs label { font-size:12px; color:#6b7280; }
+    .btn-apply { padding:7px 16px; background:#3b82f6; color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .btn-apply:hover { background:#2563eb; }
+    .products-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .products-table th { text-align:left; padding:8px 10px; font-size:11px; font-weight:600; color:#9ca3af; border-bottom:1px solid #f3f4f6; text-transform:uppercase; letter-spacing:.04em; }
+    .products-table td { padding:10px 10px; border-bottom:1px solid #f9fafb; vertical-align:middle; }
+    .products-table tr:last-child td { border-bottom:none; }
+    .product-thumb { width:36px; height:36px; object-fit:cover; border-radius:6px; }
+    .product-thumb-placeholder { width:36px; height:36px; background:#f3f4f6; border-radius:6px; display:inline-block; }
+    .rank-badge { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:6px; font-size:11px; font-weight:700; background:#f3f4f6; color:#6b7280; }
+    .rank-badge.gold { background:#fef9c3; color:#a16207; }
+    .rank-badge.silver { background:#f1f5f9; color:#475569; }
+    .rank-badge.bronze { background:#fef3c7; color:#92400e; }
+    .week-comparison { display:flex; gap:16px; margin-top:12px; }
+    .week-box { flex:1; background:#f9fafb; border-radius:10px; padding:14px 16px; }
+    .week-box .wlabel { font-size:11px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .week-box .wval { font-size:20px; font-weight:700; color:#111; margin-top:4px; }
+    .week-box .wsub { font-size:12px; color:#6b7280; margin-top:2px; }
+    @media(max-width:1000px){ .stats-grid-4{grid-template-columns:repeat(2,1fr);} .two-col{grid-template-columns:1fr;} }
+    @media(max-width:600px){ .stats-grid-4{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>İstatistikler</h1>
+        <div class="admin-user">
+          <span>👤 <%= user.name %></span>
+          <a href="/auth/cikis" style="margin-left:12px;color:#ef4444;font-size:13px;">Çıkış</a>
+        </div>
+      </div>
+
+      <!-- Tarih Filtresi -->
+      <form method="GET" action="/admin/istatistikler">
+        <div class="filter-bar">
+          <div class="quick-btns">
+            <a href="/admin/istatistikler?baslangic=<%= new Date().toISOString().slice(0,10) %>&bitis=<%= new Date().toISOString().slice(0,10) %>"
+               class="quick-btn <%= startDate === endDate && startDate === new Date().toISOString().slice(0,10) ? 'active' : '' %>">Bugün</a>
+            <a href="/admin/istatistikler?baslangic=<%= (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1)); return d.toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>"
+               class="quick-btn">Bu Hafta</a>
+            <a href="/admin/istatistikler?baslangic=<%= (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>"
+               class="quick-btn">Bu Ay</a>
+            <a href="/admin/istatistikler?baslangic=<%= (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>"
+               class="quick-btn">Son 30 Gün</a>
+            <a href="/admin/istatistikler?baslangic=<%= (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>"
+               class="quick-btn">Son 90 Gün</a>
+          </div>
+          <div class="filter-divider"></div>
+          <div class="date-inputs">
+            <label>Başlangıç</label>
+            <input type="date" name="baslangic" value="<%= startDate %>">
+            <label>Bitiş</label>
+            <input type="date" name="bitis" value="<%= endDate %>">
+            <button type="submit" class="btn-apply">Uygula</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- KPI Kartları -->
+      <%
+        const dayCount = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1);
+        const dailyAvgRevenue = stats.totalRevenue / dayCount;
+      %>
+      <div class="stats-grid-4">
+        <div class="stat-card">
+          <div class="stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= stats.totalOrders %></div>
+            <div class="stat-label">Dönem Siparişleri</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= Number(stats.totalRevenue).toLocaleString('tr-TR', {minimumFractionDigits:0,maximumFractionDigits:0}) %> ₺</div>
+            <div class="stat-label">Dönem Geliri</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= Number(stats.avgOrder).toLocaleString('tr-TR', {minimumFractionDigits:0,maximumFractionDigits:0}) %> ₺</div>
+            <div class="stat-label">Ortalama Sipariş</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= Number(dailyAvgRevenue).toLocaleString('tr-TR', {minimumFractionDigits:0,maximumFractionDigits:0}) %> ₺</div>
+            <div class="stat-label">Günlük Ort. Gelir</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ana Grafik -->
+      <div class="chart-card" style="margin-bottom:20px;">
+        <h3>📈 Günlük Gelir & Sipariş Trendi</h3>
+        <div style="position:relative;height:320px;">
+          <canvas id="mainChart"></canvas>
+        </div>
+      </div>
+
+      <!-- İki Kolon: Top Ürünler + Kategori -->
+      <div class="two-col">
+        <!-- Top 10 Ürünler -->
+        <div class="chart-card">
+          <h3>🏆 En Çok Satan 10 Ürün</h3>
+          <% if (topProducts.length === 0) { %>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;padding:32px 0;">Bu dönemde satış verisi yok.</p>
+          <% } else { %>
+          <table class="products-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th></th>
+                <th>Ürün</th>
+                <th>Adet</th>
+                <th>Gelir</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% topProducts.forEach((p, i) => { %>
+              <tr>
+                <td>
+                  <span class="rank-badge <%= i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '' %>"><%= i + 1 %></span>
+                </td>
+                <td>
+                  <% if (p.image) { %>
+                    <img src="<%= p.image %>" alt="" class="product-thumb">
+                  <% } else { %>
+                    <span class="product-thumb-placeholder"></span>
+                  <% } %>
+                </td>
+                <td style="font-weight:500;color:#111;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= p.name %>"><%= p.name %></td>
+                <td style="color:#6b7280;"><%= p.sold %> adet</td>
+                <td style="font-weight:600;color:#22c55e;white-space:nowrap;"><%= Number(p.revenue || 0).toLocaleString('tr-TR', {minimumFractionDigits:0,maximumFractionDigits:0}) %> ₺</td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+          <% } %>
+        </div>
+
+        <!-- Kategori Grafiği -->
+        <div class="chart-card">
+          <h3>📦 Kategoriye Göre Satış</h3>
+          <% if (categoryStats.length === 0) { %>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;padding:32px 0;">Bu dönemde kategori verisi yok.</p>
+          <% } else { %>
+          <div style="position:relative;height:300px;">
+            <canvas id="categoryChart"></canvas>
+          </div>
+          <% } %>
+
+          <!-- Bu Hafta / Geçen Hafta -->
+          <h3 style="margin-top:24px;">📅 Bu Hafta vs Geçen Hafta</h3>
+          <div class="week-comparison">
+            <div class="week-box">
+              <div class="wlabel">Bu Hafta</div>
+              <div class="wval"><%= thisWeek.orders %> sipariş</div>
+              <div class="wsub"><%= Number(thisWeek.revenue).toLocaleString('tr-TR', {minimumFractionDigits:0,maximumFractionDigits:0}) %> ₺</div>
+            </div>
+            <div class="week-box">
+              <div class="wlabel">Geçen Hafta</div>
+              <div class="wval"><%= lastWeek.orders %> sipariş</div>
+              <div class="wsub"><%= Number(lastWeek.revenue).toLocaleString('tr-TR', {minimumFractionDigits:0,maximumFractionDigits:0}) %> ₺</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+<script>
+// Ana grafik verisi
+const dailyData = <%- JSON.stringify(dailyData) %>;
+const categoryData = <%- JSON.stringify(categoryStats) %>;
+
+// Ana Grafik
+(function() {
+  const labels = dailyData.map(d => {
+    const dt = new Date(d.date + 'T00:00:00');
+    return dt.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+  });
+  const revenues = dailyData.map(d => Number(d.revenue));
+  const orders = dailyData.map(d => Number(d.orders));
+
+  const ctx = document.getElementById('mainChart');
+  if (!ctx) return;
+
+  new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Gelir (₺)',
+          data: revenues,
+          backgroundColor: 'rgba(59,130,246,0.15)',
+          borderColor: '#3b82f6',
+          borderWidth: 2,
+          borderRadius: 4,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Sipariş',
+          data: orders,
+          type: 'line',
+          borderColor: '#f97316',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#f97316',
+          tension: 0.3,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { font: { size: 12 }, usePointStyle: true }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.dataset.label === 'Gelir (₺)') {
+                return ' ' + Number(ctx.raw).toLocaleString('tr-TR') + ' ₺';
+              }
+              return ' ' + ctx.raw + ' sipariş';
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          position: 'left',
+          grid: { color: '#f3f4f6' },
+          ticks: {
+            font: { size: 11 },
+            callback: v => v.toLocaleString('tr-TR') + '₺'
+          }
+        },
+        y1: {
+          position: 'right',
+          grid: { display: false },
+          ticks: { font: { size: 11 } },
+          beginAtZero: true
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 } }
+        }
+      }
+    }
+  });
+})();
+
+// Kategori Grafiği
+(function() {
+  const ctx2 = document.getElementById('categoryChart');
+  if (!ctx2 || categoryData.length === 0) return;
+
+  new Chart(ctx2.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: categoryData.map(c => c.name),
+      datasets: [{
+        label: 'Satılan Adet',
+        data: categoryData.map(c => c.sold),
+        backgroundColor: [
+          '#3b82f6','#22c55e','#f97316','#a855f7',
+          '#14b8a6','#ef4444','#eab308','#6366f1',
+          '#ec4899','#06b6d4'
+        ],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.raw + ' adet'
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#f3f4f6' }, beginAtZero: true, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

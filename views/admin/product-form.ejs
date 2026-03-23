@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= product ? 'Urun Duzenle' : 'Yeni Urun' %> - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1><%= product ? 'Urun Duzenle' : 'Yeni Urun Ekle' %></h1>
+        <a href="/admin/urunler" class="btn btn-outline">← Geri</a>
+      </div>
+
+      <div class="admin-card">
+        <form method="POST" action="/admin/urunler/kaydet" enctype="multipart/form-data" class="admin-form">
+          <% if (product) { %><input type="hidden" name="id" value="<%= product.id %>"><% } %>
+
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Urun Adi *</label>
+              <input type="text" name="name" value="<%= product ? product.name : '' %>" required>
+            </div>
+            <div class="form-group">
+              <label>Kategori</label>
+              <select name="category_id">
+                <option value="">Kategori Secin</option>
+                <% categories.forEach(cat => { %>
+                <option value="<%= cat.id %>" <%= product && product.category_id === cat.id ? 'selected' : '' %>><%= cat.name %></option>
+                <% }); %>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Aciklama</label>
+            <textarea name="description" rows="4"><%= product ? product.description : '' %></textarea>
+          </div>
+
+          <div class="form-row three-col">
+            <div class="form-group">
+              <label>Fiyat (₺) *</label>
+              <input type="number" name="price" step="0.01" value="<%= product ? product.price : '' %>" required>
+            </div>
+            <div class="form-group">
+              <label>Indirimli Fiyat (₺)</label>
+              <input type="number" name="sale_price" step="0.01" value="<%= product && product.sale_price ? product.sale_price : '' %>">
+            </div>
+            <div class="form-group">
+              <label>Stok</label>
+              <input type="number" name="stock" value="<%= product ? product.stock : 0 %>">
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Bedenler (virgul ile ayirin)</label>
+              <input type="text" name="sizes" placeholder="S, M, L, XL" value="<%= product ? (function() { try { return JSON.parse(product.sizes).join(', '); } catch(e) { return ''; } })() : '' %>">
+            </div>
+            <div class="form-group">
+              <label>Renkler (virgul ile ayirin)</label>
+              <input type="text" name="colors" placeholder="Siyah, Beyaz, Kirmizi" value="<%= product ? (function() { try { return JSON.parse(product.colors).join(', '); } catch(e) { return ''; } })() : '' %>">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Urun Gorseli</label>
+            <input type="file" name="image" accept="image/*">
+            <% if (product && product.image) { %>
+            <div style="margin-top:10px;"><img src="<%= product.image %>" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:8px;"></div>
+            <% } %>
+          </div>
+
+          <div class="form-row three-col">
+            <label class="checkbox-label">
+              <input type="checkbox" name="is_active" value="1" <%= !product || product.is_active ? 'checked' : '' %>>
+              Aktif
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="is_featured" value="1" <%= product && product.is_featured ? 'checked' : '' %>>
+              One Cikan
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="is_new" value="1" <%= product && product.is_new ? 'checked' : '' %>>
+              Yeni Urun
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><%= product ? 'Guncelle' : 'Urun Ekle' %></button>
+            <a href="/admin/urunler" class="btn btn-outline">Iptal</a>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Convert comma-separated sizes/colors to JSON before submit
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const sizesInput = this.querySelector('[name="sizes"]');
+      const colorsInput = this.querySelector('[name="colors"]');
+      if (sizesInput.value) {
+        sizesInput.value = JSON.stringify(sizesInput.value.split(',').map(s => s.trim()).filter(Boolean));
+      } else {
+        sizesInput.value = '[]';
+      }
+      if (colorsInput.value) {
+        colorsInput.value = JSON.stringify(colorsInput.value.split(',').map(s => s.trim()).filter(Boolean));
+      } else {
+        colorsInput.value = '[]';
+      }
+    });
+  </script>
+</body>
+</html>

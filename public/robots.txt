@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /siparis/
+Disallow: /odeme/
+Disallow: /sepet
+Disallow: /favoriler
+Disallow: /siparislerim
+
+Sitemap: https://flavora.com/sitemap.xml

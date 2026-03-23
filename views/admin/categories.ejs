@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kategoriler - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>Kategoriler</h1>
+        <button class="btn btn-primary" onclick="document.getElementById('categoryModal').style.display='flex'">+ Yeni Kategori</button>
+      </div>
+
+      <div class="admin-card">
+        <table class="admin-table">
+          <thead><tr><th>Ad</th><th>Ust Kategori</th><th>Urun Sayisi</th><th>Sira</th><th>Durum</th><th>Islemler</th></tr></thead>
+          <tbody>
+            <% categories.forEach(cat => { %>
+            <tr>
+              <td><strong><%= cat.name %></strong></td>
+              <td><%= cat.parent_name || '-' %></td>
+              <td><%= cat.product_count %></td>
+              <td><%= cat.sort_order %></td>
+              <td><span class="badge <%= cat.is_active ? 'badge-green' : 'badge-red' %>"><%= cat.is_active ? 'Aktif' : 'Pasif' %></span></td>
+              <td class="actions">
+                <button class="btn-sm btn-edit" onclick='editCategory(<%= JSON.stringify(cat) %>)'>Duzenle</button>
+                <form method="POST" action="/admin/kategoriler/sil/<%= cat.id %>" style="display:inline" onsubmit="return confirm('Bu kategoriyi silmek istediginize emin misiniz?')">
+                  <button type="submit" class="btn-sm btn-delete">Sil</button>
+                </form>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Category Modal -->
+      <div class="modal-overlay" id="categoryModal" style="display:none">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 id="modalTitle">Yeni Kategori</h3>
+            <button onclick="document.getElementById('categoryModal').style.display='none'">&times;</button>
+          </div>
+          <form method="POST" action="/admin/kategoriler/kaydet" enctype="multipart/form-data">
+            <input type="hidden" name="id" id="catId">
+            <div class="form-group">
+              <label>Kategori Adi *</label>
+              <input type="text" name="name" id="catName" required>
+            </div>
+            <div class="form-group">
+              <label>Ust Kategori</label>
+              <select name="parent_id" id="catParent">
+                <option value="">Yok (Ana Kategori)</option>
+                <% categories.filter(c => !c.parent_id).forEach(cat => { %>
+                <option value="<%= cat.id %>"><%= cat.name %></option>
+                <% }); %>
+              </select>
+            </div>
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label>Siralama</label>
+                <input type="number" name="sort_order" id="catSort" value="0">
+              </div>
+              <div class="form-group" style="display:flex;align-items:end;">
+                <label class="checkbox-label"><input type="checkbox" name="is_active" value="1" id="catActive" checked> Aktif</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Gorsel</label>
+              <input type="file" name="image" accept="image/*">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Kaydet</button>
+              <button type="button" class="btn btn-outline" onclick="document.getElementById('categoryModal').style.display='none'">Iptal</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function editCategory(cat) {
+      document.getElementById('modalTitle').textContent = 'Kategori Duzenle';
+      document.getElementById('catId').value = cat.id;
+      document.getElementById('catName').value = cat.name;
+      document.getElementById('catParent').value = cat.parent_id || '';
+      document.getElementById('catSort').value = cat.sort_order;
+      document.getElementById('catActive').checked = cat.is_active;
+      document.getElementById('categoryModal').style.display = 'flex';
+    }
+  </script>
+</body>
+</html>

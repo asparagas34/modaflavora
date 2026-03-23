@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ürünler - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    /* Filter bar */
+    .filter-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+    .filter-bar input { padding:8px 14px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; min-width:220px; font-family:inherit; }
+    .filter-bar select { padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; font-family:inherit; }
+    .filter-bar button { padding:8px 16px; background:#111; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+    .filter-bar .reset-link { font-size:13px; color:#6b7280; text-decoration:none; }
+    .filter-bar .reset-link:hover { color:#111; }
+
+    /* Selection bar */
+    .selection-bar { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 16px; margin-bottom:16px; display:none; align-items:center; gap:12px; flex-wrap:wrap; }
+    .selection-bar.visible { display:flex; }
+    .selection-bar .sel-count { font-size:13px; font-weight:600; color:#1d4ed8; }
+    .sel-all-btn { font-size:12px; color:#2563eb; text-decoration:underline; cursor:pointer; background:none; border:none; font-family:inherit; }
+    .sel-clear-btn { font-size:12px; color:#6b7280; cursor:pointer; background:none; border:none; font-family:inherit; }
+
+    /* Bulk panel */
+    .bulk-panel { background:#fff; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); border-left:4px solid #3b82f6; }
+    .bulk-panel h3 { margin:0 0 14px; font-size:15px; color:#111; display:flex;align-items:center;gap:8px; }
+    .bulk-row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    .bulk-row .form-group { margin:0; }
+    .bulk-row label { font-size:12px; color:#6b7280; display:block; margin-bottom:4px; }
+    .bulk-row select, .bulk-row input { padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; min-width:160px; font-family:inherit; }
+    .bulk-row input[type=number] { min-width:100px; max-width:130px; }
+    .btn-bulk { background:#3b82f6; color:#fff; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; white-space:nowrap; }
+    .btn-bulk:hover { background:#2563eb; }
+    .bulk-result { margin-top:10px; font-size:13px; font-weight:600; display:none; }
+
+    /* Table */
+    .product-count-badge { background:#3b82f6; color:#fff; border-radius:20px; padding:2px 10px; font-size:13px; margin-left:8px; }
+    .cb { width:16px; height:16px; cursor:pointer; accent-color:#3b82f6; }
+
+    /* Pagination */
+    .pagination { display:flex; align-items:center; justify-content:center; gap:6px; padding:20px 0; flex-wrap:wrap; }
+    .pagination a, .pagination span { padding:7px 13px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#374151; text-decoration:none; }
+    .pagination a:hover { background:#f3f4f6; }
+    .pagination .active { background:#111; color:#fff; border-color:#111; font-weight:600; }
+    .pagination .disabled { color:#d1d5db; pointer-events:none; }
+    .page-info { font-size:13px; color:#6b7280; text-align:center; margin-top:4px; }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>Ürünler <span class="product-count-badge"><%= total %></span></h1>
+        <a href="/admin/urunler/ekle" class="btn btn-primary">+ Yeni Ürün</a>
+      </div>
+
+      <!-- Filtreler -->
+      <form method="GET" action="/admin/urunler" class="filter-bar">
+        <input type="text" name="ara" value="<%= query.ara || '' %>" placeholder="🔍 Ürün adı ara...">
+        <select name="kategori">
+          <option value="">Tüm Kategoriler</option>
+          <% categories.forEach(cat => { %>
+          <option value="<%= cat.id %>" <%= query.kategori == cat.id ? 'selected' : '' %>><%= cat.name %></option>
+          <% }); %>
+        </select>
+        <button type="submit">Filtrele</button>
+        <% if (query.ara || query.kategori) { %>
+        <a href="/admin/urunler" class="reset-link">✕ Temizle</a>
+        <% } %>
+      </form>
+
+      <!-- Seçim Bilgi Barı -->
+      <div class="selection-bar" id="selectionBar">
+        <span class="sel-count" id="selCount">0 ürün seçildi</span>
+        <button class="sel-all-btn" id="selAllBtn" onclick="selectAllProducts()">
+          Tüm <strong><%= total %></strong> ürünü seç
+        </button>
+        <button class="sel-clear-btn" onclick="clearSelection()">Seçimi temizle</button>
+      </div>
+
+      <!-- Toplu Fiyat Güncelleme -->
+      <div class="bulk-panel">
+        <h3>⚡ Toplu Fiyat Güncelleme</h3>
+        <div class="bulk-row">
+          <div class="form-group">
+            <label>İşlem</label>
+            <select id="bulkIslem">
+              <optgroup label="─── Ana Fiyat ───">
+                <option value="indir_oran">Ana Fiyatı % Düşür</option>
+                <option value="artir_oran">Ana Fiyatı % Artır</option>
+                <option value="sabit_indirim">Ana Fiyattan Sabit Tutar Düşür (₺)</option>
+              </optgroup>
+              <optgroup label="─── İndirimli Fiyat ───">
+                <option value="indirim_ekle">Ana Fiyattan % İndirim Ekle</option>
+                <option value="indir_oran_sale">İndirimli Fiyatı % Düşür</option>
+                <option value="artir_oran_sale">İndirimli Fiyatı % Artır</option>
+                <option value="sabit_indirim_sale">İndirimli Fiyattan Sabit Tutar Düşür (₺)</option>
+                <option value="indirim_kaldir">İndirimi Kaldır</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-group" id="oranGroup">
+            <label>Oran / Tutar</label>
+            <input type="number" id="bulkOran" placeholder="örn: 30" min="0" max="99" step="0.01">
+          </div>
+          <div class="form-group" id="kategoriGroup">
+            <label>Kategori <span style="color:#9ca3af;font-size:11px;">(seçim yoksa)</span></label>
+            <select id="bulkKategori">
+              <option value="">Tüm Kategoriler</option>
+              <% categories.forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <button class="btn-bulk" onclick="topluGuncelle()">Uygula</button>
+        </div>
+        <div id="bulkResult" class="bulk-result"></div>
+      </div>
+
+      <!-- Ürün Tablosu -->
+      <div class="admin-card">
+        <table class="admin-table" id="productsTable">
+          <thead>
+            <tr>
+              <th style="width:36px;"><input type="checkbox" class="cb" id="masterCb" onchange="togglePageSelect(this)"></th>
+              <th style="width:60px">Görsel</th>
+              <th>Ürün Adı</th>
+              <th>Kategori</th>
+              <th>Fiyat</th>
+              <th>Stok</th>
+              <th>Durum</th>
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% products.forEach(product => { %>
+            <tr data-id="<%= product.id %>">
+              <td><input type="checkbox" class="cb row-cb" value="<%= product.id %>" onchange="updateSelection()"></td>
+              <td>
+                <% if (product.image) { %>
+                <img src="<%= product.image %>" alt="" style="width:50px;height:60px;object-fit:cover;border-radius:6px;">
+                <% } else { %>
+                <div style="width:50px;height:60px;background:#f0f0f0;border-radius:6px;"></div>
+                <% } %>
+              </td>
+              <td>
+                <strong><%= product.name %></strong>
+                <div style="margin-top:2px;">
+                  <% if (product.is_new) { %><span class="badge badge-blue" style="font-size:10px;">YENİ</span><% } %>
+                  <% if (product.is_featured) { %><span class="badge badge-gold" style="font-size:10px;">ÖNE ÇIKAN</span><% } %>
+                </div>
+              </td>
+              <td style="color:#6b7280;font-size:13px;"><%= product.category_name || '-' %></td>
+              <td>
+                <% if (product.sale_price) { %>
+                <div style="text-decoration:line-through;color:#9ca3af;font-size:12px;"><%= Number(product.price).toLocaleString('tr-TR') %> ₺</div>
+                <strong style="color:#ef4444;"><%= Number(product.sale_price).toLocaleString('tr-TR') %> ₺</strong>
+                <% } else { %>
+                <strong><%= Number(product.price).toLocaleString('tr-TR') %> ₺</strong>
+                <% } %>
+              </td>
+              <td><span style="<%= product.stock < 5 ? 'color:#ef4444;font-weight:600;' : '' %>"><%= product.stock %></span></td>
+              <td><span class="badge <%= product.is_active ? 'badge-green' : 'badge-red' %>"><%= product.is_active ? 'Aktif' : 'Pasif' %></span></td>
+              <td class="actions">
+                <a href="/admin/urunler/duzenle/<%= product.id %>" class="btn-sm btn-edit">Düzenle</a>
+                <form method="POST" action="/admin/urunler/sil/<%= product.id %>" style="display:inline" onsubmit="return confirm('Bu ürünü silmek istediğinize emin misiniz?')">
+                  <button type="submit" class="btn-sm btn-delete">Sil</button>
+                </form>
+              </td>
+            </tr>
+            <% }); %>
+            <% if (products.length === 0) { %>
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">Ürün bulunamadı.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Sayfalama -->
+      <% if (totalPages > 1) { %>
+      <div class="pagination">
+        <% const buildUrl = (p) => {
+          const q = new URLSearchParams();
+          if (query.ara) q.set('ara', query.ara);
+          if (query.kategori) q.set('kategori', query.kategori);
+          q.set('sayfa', p);
+          return '/admin/urunler?' + q.toString();
+        }; %>
+        <a href="<%= buildUrl(1) %>" class="<%= page === 1 ? 'disabled' : '' %>">«</a>
+        <a href="<%= buildUrl(Math.max(1, page-1)) %>" class="<%= page === 1 ? 'disabled' : '' %>">‹</a>
+        <% const start = Math.max(1, page-2); const end = Math.min(totalPages, page+2); %>
+        <% if (start > 1) { %><span>...</span><% } %>
+        <% for (let i = start; i <= end; i++) { %>
+        <a href="<%= buildUrl(i) %>" class="<%= i === page ? 'active' : '' %>"><%= i %></a>
+        <% } %>
+        <% if (end < totalPages) { %><span>...</span><% } %>
+        <a href="<%= buildUrl(Math.min(totalPages, page+1)) %>" class="<%= page === totalPages ? 'disabled' : '' %>">›</a>
+        <a href="<%= buildUrl(totalPages) %>" class="<%= page === totalPages ? 'disabled' : '' %>">»</a>
+      </div>
+      <div class="page-info">Sayfa <%= page %> / <%= totalPages %> — Toplam <%= total %> ürün</div>
+      <% } %>
+
+    </main>
+  </div>
+
+<script>
+let selectedIds = new Set();
+let selectAllMode = false; // tüm filtrelenmiş ürünleri seç
+const TOTAL = <%= total %>;
+
+function updateSelection() {
+  selectAllMode = false;
+  const cbs = document.querySelectorAll('.row-cb');
+  cbs.forEach(cb => {
+    if (cb.checked) selectedIds.add(cb.value);
+    else selectedIds.delete(cb.value);
+  });
+  const master = document.getElementById('masterCb');
+  master.checked = [...cbs].every(cb => cb.checked);
+  master.indeterminate = !master.checked && selectedIds.size > 0;
+  renderSelectionBar();
+}
+
+function togglePageSelect(master) {
+  selectAllMode = false;
+  document.querySelectorAll('.row-cb').forEach(cb => {
+    cb.checked = master.checked;
+    if (master.checked) selectedIds.add(cb.value);
+    else selectedIds.delete(cb.value);
+  });
+  renderSelectionBar();
+}
+
+function selectAllProducts() {
+  selectAllMode = true;
+  document.querySelectorAll('.row-cb').forEach(cb => { cb.checked = true; selectedIds.add(cb.value); });
+  document.getElementById('masterCb').checked = true;
+  renderSelectionBar();
+}
+
+function clearSelection() {
+  selectAllMode = false;
+  selectedIds.clear();
+  document.querySelectorAll('.row-cb, #masterCb').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+  renderSelectionBar();
+}
+
+function renderSelectionBar() {
+  const bar = document.getElementById('selectionBar');
+  const countEl = document.getElementById('selCount');
+  const allBtn = document.getElementById('selAllBtn');
+  const count = selectAllMode ? TOTAL : selectedIds.size;
+  if (count === 0) { bar.classList.remove('visible'); return; }
+  bar.classList.add('visible');
+  countEl.textContent = (selectAllMode ? `Tüm ${TOTAL}` : count) + ' ürün seçildi';
+  allBtn.style.display = (selectAllMode || count >= TOTAL) ? 'none' : '';
+}
+
+// Toplu işlem
+const islemWithRate = ['indirim_ekle', 'indir_oran', 'artir_oran', 'sabit_indirim', 'indir_oran_sale', 'artir_oran_sale', 'sabit_indirim_sale'];
+document.getElementById('bulkIslem').addEventListener('change', function() {
+  document.getElementById('oranGroup').style.display = islemWithRate.includes(this.value) ? '' : 'none';
+});
+
+async function topluGuncelle() {
+  let islem = document.getElementById('bulkIslem').value;
+  const oran = document.getElementById('bulkOran').value;
+  const kategori_id = document.getElementById('bulkKategori').value;
+
+  if (islemWithRate.includes(islem) && !oran) { alert('Lütfen oran/tutar girin'); return; }
+
+  // _sale suffix → indirimli=1 flag
+  let indirimli = '0';
+  if (islem.endsWith('_sale')) {
+    indirimli = '1';
+    islem = islem.replace('_sale', '');
+  }
+
+  const hasSelection = selectAllMode || selectedIds.size > 0;
+  const targetText = selectAllMode
+    ? `Tüm ${TOTAL} ürün`
+    : selectedIds.size > 0
+      ? `Seçili ${selectedIds.size} ürün`
+      : kategori_id ? 'Seçili kategorideki tüm ürünler' : 'Tüm ürünler';
+
+  const confirmMsg = islem === 'indirim_kaldir'
+    ? `${targetText} için tüm indirimler kaldırılacak. Onaylıyor musunuz?`
+    : `${targetText} için işlem uygulanacak. Onaylıyor musunuz?`;
+
+  if (!confirm(confirmMsg)) return;
+
+  const btn = document.querySelector('.btn-bulk');
+  btn.disabled = true; btn.textContent = 'Uygulanıyor...';
+
+  const body = { islem, oran, sabit_fiyat: oran, indirimli };
+  if (selectAllMode) {
+    body.selectAll = '1';
+    body.kategori_id = kategori_id;
+    const ara = new URLSearchParams(location.search).get('ara');
+    if (ara) body.ara = ara;
+  } else if (selectedIds.size > 0) {
+    body.productIds = [...selectedIds];
+  } else {
+    body.kategori_id = kategori_id;
+  }
+
+  const res = await fetch('/admin/urunler/toplu-fiyat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = 'Uygula';
+
+  const resultEl = document.getElementById('bulkResult');
+  resultEl.style.display = 'block';
+  if (data.success) {
+    resultEl.style.color = '#22c55e';
+    resultEl.textContent = `✅ ${data.updated} ürün güncellendi!`;
+    setTimeout(() => location.reload(), 1200);
+  } else {
+    resultEl.style.color = '#ef4444';
+    resultEl.textContent = '❌ Hata oluştu.';
+  }
+}
+</script>
+</body>
+</html>

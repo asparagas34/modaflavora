@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yorumlar - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .review-filters { display:flex; gap:8px; margin-bottom:20px; }
+    .review-filters a { padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; color:#6b7280; background:#f3f4f6; text-decoration:none; }
+    .review-filters a.active { background:#111; color:#fff; }
+    .review-filters .badge { background:#ef4444; color:#fff; font-size:10px; padding:1px 6px; border-radius:10px; margin-left:4px; }
+    .review-card { background:#fff; border-radius:12px; padding:18px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.06); display:grid; grid-template-columns:60px 1fr auto; gap:14px; align-items:start; }
+    .review-card img { width:60px; height:60px; object-fit:cover; border-radius:8px; }
+    .review-meta { font-size:12px; color:#6b7280; margin-bottom:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .review-stars { display:flex; gap:1px; }
+    .review-comment { font-size:13px; color:#374151; line-height:1.5; }
+    .review-actions { display:flex; gap:6px; flex-direction:column; }
+    .review-actions form { margin:0; }
+    .review-actions button { padding:6px 12px; border-radius:6px; border:none; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .btn-approve { background:#f0fdf4; color:#16a34a; }
+    .btn-approve:hover { background:#dcfce7; }
+    .btn-verify { background:#eff6ff; color:#2563eb; }
+    .btn-verify:hover { background:#dbeafe; }
+    .btn-delete { background:#fef2f2; color:#ef4444; }
+    .btn-delete:hover { background:#fee2e2; }
+    .pending-badge { background:#fef3c7; color:#92400e; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600; }
+    .verified-badge { background:#f0fdf4; color:#16a34a; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600; }
+    @media(max-width:768px) { .review-card { grid-template-columns:1fr; } .review-card img { width:40px; height:40px; } }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>💬 Yorumlar</h1>
+      </div>
+
+      <div class="review-filters">
+        <a href="/admin/yorumlar" class="<%= filter === 'all' ? 'active' : '' %>">Tümü (<%= reviews.length %>)</a>
+        <a href="/admin/yorumlar?filter=pending" class="<%= filter === 'pending' ? 'active' : '' %>">Bekleyen<% if (pendingCount > 0) { %><span class="badge"><%= pendingCount %></span><% } %></a>
+        <a href="/admin/yorumlar?filter=approved" class="<%= filter === 'approved' ? 'active' : '' %>">Onaylı</a>
+      </div>
+
+      <% if (reviews.length === 0) { %>
+      <div style="text-align:center;padding:60px;color:#9ca3af;">
+        <p style="font-size:14px;">Henüz yorum bulunmuyor</p>
+      </div>
+      <% } %>
+
+      <% reviews.forEach(rv => { %>
+      <div class="review-card">
+        <% if (rv.product_image) { %>
+        <a href="/urun/<%= rv.product_slug %>" target="_blank"><img src="<%= rv.product_image %>" alt=""></a>
+        <% } else { %>
+        <div style="width:60px;height:60px;background:#f3f4f6;border-radius:8px;"></div>
+        <% } %>
+        <div>
+          <div class="review-meta">
+            <strong style="color:#111;font-size:13px;"><%= rv.author_name %></strong>
+            <% if (rv.author_city) { %><span><%= rv.author_city %></span><% } %>
+            <div class="review-stars">
+              <% for (let s=1; s<=5; s++) { %>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="<%= s <= rv.rating ? '#f59e0b' : '#e5e7eb' %>" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <% } %>
+            </div>
+            <% if (!rv.is_approved) { %><span class="pending-badge">Bekliyor</span><% } %>
+            <% if (rv.is_verified) { %><span class="verified-badge">Doğrulanmış</span><% } %>
+            <span><%= new Date(rv.created_at).toLocaleDateString('tr-TR') %></span>
+          </div>
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">
+            <a href="/urun/<%= rv.product_slug %>" target="_blank" style="color:#6b7280;"><%= rv.product_name %></a>
+          </div>
+          <% if (rv.title) { %><p style="font-size:13px;font-weight:600;margin:0 0 2px;"><%= rv.title %></p><% } %>
+          <p class="review-comment"><%= rv.comment %></p>
+          <% if (rv.helpful_count > 0) { %><span style="font-size:11px;color:#9ca3af;">👍 <%= rv.helpful_count %> kişi faydalı buldu</span><% } %>
+        </div>
+        <div class="review-actions">
+          <% if (!rv.is_approved) { %>
+          <form method="POST" action="/admin/yorumlar/onayla/<%= rv.id %>"><button type="submit" class="btn-approve">✓ Onayla</button></form>
+          <% } %>
+          <% if (!rv.is_verified) { %>
+          <form method="POST" action="/admin/yorumlar/dogrula/<%= rv.id %>"><button type="submit" class="btn-verify">✓ Doğrula</button></form>
+          <% } %>
+          <form method="POST" action="/admin/yorumlar/sil/<%= rv.id %>" onsubmit="return confirm('Silmek istediğinize emin misiniz?')"><button type="submit" class="btn-delete">✕ Sil</button></form>
+        </div>
+      </div>
+      <% }); %>
+    </main>
+  </div>
+</body>
+</html>

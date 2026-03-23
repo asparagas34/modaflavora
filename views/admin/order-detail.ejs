@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siparis #<%= order.id %> - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>Siparis #<%= order.id %></h1>
+        <a href="/admin/siparisler" class="btn btn-outline">← Geri</a>
+      </div>
+
+      <div class="order-detail-grid">
+        <div class="admin-card">
+          <h3>Siparis Bilgileri</h3>
+          <table class="detail-table">
+            <tr><td>Musteri</td><td><%= order.guest_name || order.user_name || '-' %></td></tr>
+            <tr><td>E-posta</td><td><%= order.guest_email || order.user_email || '-' %></td></tr>
+            <tr><td>Telefon</td><td><%= order.guest_phone || '-' %></td></tr>
+            <tr><td>Adres</td><td><%= order.address %>, <%= order.district %> <%= order.city %></td></tr>
+            <tr><td>Odeme</td><td><%= order.payment_method === 'cod' ? 'Kapida Odeme' : 'Havale/EFT' %></td></tr>
+            <tr><td>Tarih</td><td><%= new Date(order.created_at).toLocaleString('tr-TR') %></td></tr>
+            <% if (order.note) { %><tr><td>Not</td><td><%= order.note %></td></tr><% } %>
+          </table>
+
+          <h3 style="margin-top:20px;">Durum Guncelle</h3>
+          <form method="POST" action="/admin/siparisler/durum/<%= order.id %>" style="display:flex;gap:10px;">
+            <select name="status" class="form-control">
+              <% ['pending_payment','pending','processing','shipped','delivered','cancelled'].forEach(s => { %>
+              <option value="<%= s %>" <%= order.status === s ? 'selected' : '' %>><%= {pending_payment:'⏳ Ödeme Bekleniyor',pending:'Beklemede',processing:'✅ Ödeme Onaylandı / Hazırlanıyor',shipped:'Kargoda',delivered:'Teslim Edildi',cancelled:'İptal'}[s] %></option>
+              <% }); %>
+            </select>
+            <button type="submit" class="btn btn-primary">Guncelle</button>
+          </form>
+        </div>
+
+        <div class="admin-card">
+          <h3>Urunler</h3>
+          <table class="admin-table">
+            <thead><tr><th>Urun</th><th>Fiyat</th><th>Adet</th><th>Toplam</th></tr></thead>
+            <tbody>
+              <% items.forEach(item => { %>
+              <tr>
+                <td style="display:flex;align-items:center;gap:10px;">
+                  <% if (item.product_image) { %><img src="<%= item.product_image %>" style="width:40px;height:40px;object-fit:cover;border-radius:4px;"><% } %>
+                  <div>
+                    <%= item.product_name %>
+                    <% if (item.size) { %><br><small>Beden: <%= item.size %></small><% } %>
+                    <% if (item.color) { %><small> | Renk: <%= item.color %></small><% } %>
+                  </div>
+                </td>
+                <td><%= item.price.toLocaleString('tr-TR') %> ₺</td>
+                <td><%= item.quantity %></td>
+                <td><%= (item.price * item.quantity).toLocaleString('tr-TR') %> ₺</td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+          <div style="margin-top:15px;text-align:right;">
+            <p>Ara Toplam: <strong><%= order.subtotal.toLocaleString('tr-TR') %> ₺</strong></p>
+            <p>Kargo: <strong><%= order.shipping === 0 ? 'Ucretsiz' : order.shipping.toLocaleString('tr-TR') + ' ₺' %></strong></p>
+            <p style="font-size:18px;">Toplam: <strong><%= order.total.toLocaleString('tr-TR') %> ₺</strong></p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

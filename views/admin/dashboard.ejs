@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .stats-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+    .stats-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:20px; }
+    .charts-row { display:grid; grid-template-columns:2fr 1fr; gap:20px; margin-bottom:20px; }
+    .chart-card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .chart-card h3 { font-size:14px; font-weight:600; color:#374151; margin:0 0 16px; }
+    .top-products-list { list-style:none; padding:0; margin:0; }
+    .top-products-list li { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
+    .top-products-list li:last-child { border-bottom:none; }
+    .top-products-list img { width:36px; height:36px; object-fit:cover; border-radius:6px; }
+    .top-products-list .name { flex:1; font-size:13px; font-weight:500; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+    .top-products-list .sold { font-size:12px; color:#6b7280; white-space:nowrap; }
+    .stat-number { font-size:28px; font-weight:700; color:#111; }
+    .stat-label { font-size:12px; color:#6b7280; margin-top:2px; }
+    .stat-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); display:flex; align-items:center; gap:16px; }
+    .stat-icon { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .stat-icon.blue { background:#eff6ff; color:#3b82f6; }
+    .stat-icon.green { background:#f0fdf4; color:#22c55e; }
+    .stat-icon.orange { background:#fff7ed; color:#f97316; }
+    .stat-icon.purple { background:#faf5ff; color:#a855f7; }
+    .stat-icon.red { background:#fef2f2; color:#ef4444; }
+    .stat-icon.teal { background:#f0fdfa; color:#14b8a6; }
+    /* Anlık Takip */
+    .live-panel { background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); border-radius:14px; padding:24px; margin-bottom:20px; color:#fff; }
+    .live-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .live-dot { width:10px; height:10px; background:#22c55e; border-radius:50%; display:inline-block; margin-right:8px; animation:livePulse 2s infinite; }
+    @keyframes livePulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.5;transform:scale(1.3);} }
+    .live-title { font-size:15px; font-weight:700; display:flex; align-items:center; }
+    .live-badge { font-size:12px; background:rgba(34,197,94,.2); color:#22c55e; padding:3px 10px; border-radius:20px; font-weight:600; }
+    .live-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+    .live-metric { background:rgba(255,255,255,.07); border-radius:10px; padding:14px; text-align:center; }
+    .live-metric-value { font-size:24px; font-weight:800; }
+    .live-metric-label { font-size:11px; color:#94a3b8; margin-top:3px; }
+    .live-funnel { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:18px; }
+    .funnel-card { background:rgba(255,255,255,.05); border-radius:10px; padding:16px; }
+    .funnel-card h4 { font-size:12px; color:#94a3b8; margin:0 0 12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+    .funnel-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; font-size:13px; }
+    .funnel-row .label { color:#cbd5e1; }
+    .funnel-row .val { font-weight:700; }
+    .funnel-row .rate { font-size:11px; color:#64748b; margin-left:6px; }
+    .live-visitors { margin-top:14px; }
+    .live-visitors h4 { font-size:12px; color:#94a3b8; margin:0 0 10px; font-weight:600; }
+    .visitor-list { max-height:200px; overflow-y:auto; }
+    .visitor-row { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; font-size:12px; color:#e2e8f0; }
+    .visitor-row:hover { background:rgba(255,255,255,.05); }
+    .visitor-page { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .visitor-tag { font-size:10px; padding:2px 6px; border-radius:4px; white-space:nowrap; }
+    .visitor-tag.cart { background:rgba(249,115,22,.2); color:#fb923c; }
+    .visitor-tag.checkout { background:rgba(168,85,247,.2); color:#c084fc; }
+    .visitor-tag.mobile { background:rgba(59,130,246,.15); color:#93c5fd; }
+    .visitor-tag.desktop { background:rgba(34,197,94,.15); color:#86efac; }
+    .live-top-pages { margin-top:14px; }
+    .live-top-pages h4 { font-size:12px; color:#94a3b8; margin:0 0 10px; font-weight:600; }
+    .top-page-row { display:flex; justify-content:space-between; padding:4px 8px; font-size:12px; color:#cbd5e1; }
+    .top-page-bar { height:3px; background:rgba(59,130,246,.3); border-radius:2px; margin-top:2px; }
+
+    @media(max-width:900px){ .stats-grid-4{grid-template-columns:repeat(2,1fr);} .charts-row{grid-template-columns:1fr;} .live-metrics{grid-template-columns:repeat(2,1fr);} .live-funnel{grid-template-columns:1fr;} }
+    @media(max-width:600px){ .stats-grid-4{grid-template-columns:1fr;} .stats-grid-2{grid-template-columns:1fr;} .live-metrics{grid-template-columns:repeat(2,1fr);} }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>Dashboard</h1>
+        <div class="admin-user">
+          <span>👤 <%= user.name %></span>
+          <a href="/auth/cikis" style="margin-left:12px;color:#ef4444;font-size:13px;">Çıkış</a>
+        </div>
+      </div>
+
+      <!-- Anlık Takip Paneli -->
+      <div class="live-panel" id="livePanel">
+        <div class="live-header">
+          <div class="live-title"><span class="live-dot"></span> Anlık Takip</div>
+          <span class="live-badge" id="liveVisitorBadge">0 kişi sitede</span>
+        </div>
+
+        <div class="live-metrics">
+          <div class="live-metric">
+            <div class="live-metric-value" id="liveActiveVisitors">0</div>
+            <div class="live-metric-label">Aktif Ziyaretçi</div>
+          </div>
+          <div class="live-metric">
+            <div class="live-metric-value" style="color:#fb923c;" id="liveActiveCarts">0</div>
+            <div class="live-metric-label">Aktif Sepet</div>
+          </div>
+          <div class="live-metric">
+            <div class="live-metric-value" style="color:#c084fc;" id="liveActiveCheckouts">0</div>
+            <div class="live-metric-label">Ödeme Adımında</div>
+          </div>
+          <div class="live-metric">
+            <div class="live-metric-value" style="color:#22c55e;" id="liveTodayOrders">0</div>
+            <div class="live-metric-label">Bugün Sipariş</div>
+          </div>
+        </div>
+
+        <div class="live-funnel">
+          <div class="funnel-card">
+            <h4>Bugün</h4>
+            <div class="funnel-row"><span class="label">Sayfa Görüntüleme</span><span class="val" id="fTodayViews">0</span></div>
+            <div class="funnel-row"><span class="label">Sepete Ekleme</span><span class="val" id="fTodayCarts">0</span><span class="rate" id="fTodayCartRate"></span></div>
+            <div class="funnel-row"><span class="label">Ödeme Adımı</span><span class="val" id="fTodayCheckouts">0</span><span class="rate" id="fTodayCheckoutRate"></span></div>
+            <div class="funnel-row"><span class="label">Sipariş</span><span class="val" id="fTodayOrders">0</span><span class="rate" id="fTodayOrderRate"></span></div>
+            <div class="funnel-row" style="border-top:1px solid rgba(255,255,255,.1);padding-top:8px;margin-top:4px;"><span class="label">Gelir</span><span class="val" style="color:#22c55e;" id="fTodayRevenue">0 ₺</span></div>
+          </div>
+          <div class="funnel-card">
+            <h4>Bu Hafta</h4>
+            <div class="funnel-row"><span class="label">Sayfa Görüntüleme</span><span class="val" id="fWeekViews">0</span></div>
+            <div class="funnel-row"><span class="label">Sepete Ekleme</span><span class="val" id="fWeekCarts">0</span></div>
+            <div class="funnel-row"><span class="label">Ödeme Adımı</span><span class="val" id="fWeekCheckouts">0</span></div>
+            <div class="funnel-row"><span class="label">Sipariş</span><span class="val" id="fWeekOrders">0</span></div>
+            <div class="funnel-row" style="border-top:1px solid rgba(255,255,255,.1);padding-top:8px;margin-top:4px;"><span class="label">Gelir</span><span class="val" style="color:#22c55e;" id="fWeekRevenue">0 ₺</span></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div class="live-visitors">
+            <h4>Aktif Ziyaretçiler</h4>
+            <div class="visitor-list" id="visitorList">
+              <div style="color:#64748b;font-size:12px;padding:8px;">Yükleniyor...</div>
+            </div>
+          </div>
+          <div class="live-top-pages">
+            <h4>Popüler Sayfalar (Bugün)</h4>
+            <div id="topPagesList">
+              <div style="color:#64748b;font-size:12px;padding:8px;">Yükleniyor...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ana İstatistikler -->
+      <div class="stats-grid-4">
+        <div class="stat-card">
+          <div class="stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= stats.totalOrders %></div>
+            <div class="stat-label">Toplam Sipariş</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= Number(stats.totalRevenue).toLocaleString('tr-TR') %> ₺</div>
+            <div class="stat-label">Toplam Gelir</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon teal">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= stats.totalProducts %></div>
+            <div class="stat-label">Toplam Ürün <span style="font-size:11px;color:#22c55e;">(<%= stats.activeProducts %> aktif)</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= stats.totalUsers %></div>
+            <div class="stat-label">Toplam Üye</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bugün / Bekleyen -->
+      <div class="stats-grid-2" style="margin-bottom:20px;">
+        <div class="stat-card">
+          <div class="stat-icon orange">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= stats.todayOrders %> sipariş</div>
+            <div class="stat-label">Bugün — <strong><%= Number(stats.todayRevenue).toLocaleString('tr-TR') %> ₺</strong> gelir</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <div class="stat-number"><%= stats.pendingOrders %></div>
+            <div class="stat-label">Bekleyen Sipariş</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grafikler -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3>📈 Sipariş & Gelir Trendi</h3>
+            <select id="daySelect" style="font-size:12px;padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;">
+              <option value="7">Son 7 Gün</option>
+              <option value="30" selected>Son 30 Gün</option>
+              <option value="90">Son 3 Ay</option>
+            </select>
+          </div>
+          <div style="position:relative;height:260px;"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>🏆 En Çok Satan Ürünler</h3>
+          <ul class="top-products-list" id="topProductsList">
+            <li style="color:#999;font-size:13px;">Yükleniyor...</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Kategori Grafiği -->
+      <div class="chart-card" style="margin-bottom:20px;">
+        <h3>📦 Kategoriye Göre Satış</h3>
+        <div style="position:relative;height:260px;"><canvas id="categoryChart"></canvas></div>
+      </div>
+
+      <!-- Son Siparişler -->
+      <div class="admin-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="margin:0;">Son Siparişler</h3>
+          <a href="/admin/siparisler" style="font-size:13px;color:#6b7280;">Tümünü Gör →</a>
+        </div>
+        <table class="admin-table">
+          <thead><tr><th>#</th><th>Müşteri</th><th>Toplam</th><th>Durum</th><th>Tarih</th></tr></thead>
+          <tbody>
+            <% const statusMap = { pending:'Beklemede', processing:'Hazırlanıyor', shipped:'Kargoda', delivered:'Teslim Edildi', cancelled:'İptal' }; %>
+            <% stats.recentOrders.forEach(order => { %>
+            <tr onclick="window.location='/admin/siparisler/<%= order.id %>'" style="cursor:pointer;">
+              <td><strong>#<%= order.id %></strong></td>
+              <td><%= order.guest_name || 'Üye' %></td>
+              <td><strong><%= Number(order.total).toLocaleString('tr-TR') %> ₺</strong></td>
+              <td><span class="status-badge status-<%= order.status %>"><%= statusMap[order.status] || order.status %></span></td>
+              <td style="color:#6b7280;font-size:13px;"><%= new Date(order.created_at).toLocaleDateString('tr-TR') %></td>
+            </tr>
+            <% }); %>
+            <% if (stats.recentOrders.length === 0) { %>
+            <tr><td colspan="5" style="text-align:center;padding:40px;color:#9ca3af;">Henüz sipariş bulunmuyor</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+<script>
+let revenueChart, categoryChart;
+
+async function loadStats(days) {
+  const res = await fetch('/admin/istatistik-data?days=' + days);
+  const data = await res.json();
+
+  // Gelir & Sipariş Grafiği
+  const labels = data.dailyOrders.map(d => {
+    const dt = new Date(d.date);
+    return dt.toLocaleDateString('tr-TR', {day:'2-digit', month:'short'});
+  });
+  const revenues = data.dailyOrders.map(d => d.revenue);
+  const orders = data.dailyOrders.map(d => d.orders);
+
+  if (revenueChart) revenueChart.destroy();
+  const ctx = document.getElementById('revenueChart').getContext('2d');
+  revenueChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Gelir (₺)', data: revenues, backgroundColor: 'rgba(59,130,246,0.15)', borderColor: '#3b82f6', borderWidth: 2, borderRadius: 4, yAxisID: 'y' },
+        { label: 'Sipariş', data: orders, type: 'line', borderColor: '#f97316', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { font: { size: 12 } } } },
+      scales: {
+        y: { position: 'left', grid: { color: '#f3f4f6' }, ticks: { font: { size: 11 }, callback: v => v.toLocaleString('tr-TR') + '₺' } },
+        y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  // Kategori Grafiği
+  if (categoryChart) categoryChart.destroy();
+  const ctx2 = document.getElementById('categoryChart').getContext('2d');
+  categoryChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: data.categoryStats.map(c => c.name),
+      datasets: [{ label: 'Satılan Adet', data: data.categoryStats.map(c => c.sold),
+        backgroundColor: ['#3b82f6','#22c55e','#f97316','#a855f7','#14b8a6','#ef4444','#eab308','#6366f1'],
+        borderRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: '#f3f4f6' }, beginAtZero: true } }
+    }
+  });
+
+  // Top Ürünler
+  const list = document.getElementById('topProductsList');
+  if (data.topProducts.length === 0) {
+    list.innerHTML = '<li style="color:#9ca3af;font-size:13px;">Henüz satış yok</li>';
+    return;
+  }
+  list.innerHTML = data.topProducts.slice(0, 8).map((p, i) => `
+    <li>
+      <span style="font-size:12px;color:#9ca3af;width:18px;">${i+1}.</span>
+      ${p.image ? `<img src="${p.image}" alt="">` : '<div style="width:36px;height:36px;background:#f3f4f6;border-radius:6px;"></div>'}
+      <span class="name" title="${p.name}">${p.name}</span>
+      <span class="sold">${p.sold} adet · ${Number(p.revenue || 0).toLocaleString('tr-TR')}₺</span>
+    </li>
+  `).join('');
+}
+
+document.getElementById('daySelect').addEventListener('change', e => loadStats(e.target.value));
+loadStats(30);
+
+// ─── Anlık Takip Polling ───
+async function loadLiveStats() {
+  try {
+    const res = await fetch('/admin/api/canli');
+    const d = await res.json();
+
+    // Üst metrikler
+    document.getElementById('liveActiveVisitors').textContent = d.activeVisitors;
+    document.getElementById('liveActiveCarts').textContent = d.activeCarts;
+    document.getElementById('liveActiveCheckouts').textContent = d.activeCheckouts;
+    document.getElementById('liveTodayOrders').textContent = d.today.orders;
+    document.getElementById('liveVisitorBadge').textContent = d.activeVisitors + ' kişi sitede';
+
+    // Bugün funnel
+    document.getElementById('fTodayViews').textContent = d.today.pageViews.toLocaleString('tr-TR');
+    document.getElementById('fTodayCarts').textContent = d.today.cartAdds;
+    document.getElementById('fTodayCheckouts').textContent = d.today.checkouts;
+    document.getElementById('fTodayOrders').textContent = d.today.orders;
+    document.getElementById('fTodayRevenue').textContent = d.today.revenue.toLocaleString('tr-TR') + ' ₺';
+    document.getElementById('fTodayCartRate').textContent = d.today.cartRate > 0 ? '(' + d.today.cartRate + '%)' : '';
+    document.getElementById('fTodayCheckoutRate').textContent = d.today.checkoutRate > 0 ? '(' + d.today.checkoutRate + '%)' : '';
+    document.getElementById('fTodayOrderRate').textContent = d.today.orderRate > 0 ? '(' + d.today.orderRate + '%)' : '';
+
+    // Bu hafta funnel
+    document.getElementById('fWeekViews').textContent = d.thisWeek.pageViews.toLocaleString('tr-TR');
+    document.getElementById('fWeekCarts').textContent = d.thisWeek.cartAdds;
+    document.getElementById('fWeekCheckouts').textContent = d.thisWeek.checkouts;
+    document.getElementById('fWeekOrders').textContent = d.thisWeek.orders;
+    document.getElementById('fWeekRevenue').textContent = d.thisWeek.revenue.toLocaleString('tr-TR') + ' ₺';
+
+    // Aktif ziyaretçi listesi
+    const vl = document.getElementById('visitorList');
+    if (d.visitors.length === 0) {
+      vl.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">Aktif ziyaretçi yok</div>';
+    } else {
+      vl.innerHTML = d.visitors.map(v => {
+        let tags = '';
+        if (v.hasCart) tags += '<span class="visitor-tag cart">Sepet</span>';
+        tags += '<span class="visitor-tag ' + v.device + '">' + (v.device === 'mobile' ? '📱' : '💻') + '</span>';
+        return '<div class="visitor-row">' +
+          '<span class="visitor-page" title="' + v.path + '">' + v.page + '</span>' +
+          '<span style="color:#64748b;font-size:11px;">' + v.duration + '</span>' +
+          tags +
+        '</div>';
+      }).join('');
+    }
+
+    // Popüler sayfalar
+    const tp = document.getElementById('topPagesList');
+    if (d.topPages.length === 0) {
+      tp.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">Henüz veri yok</div>';
+    } else {
+      const maxViews = d.topPages[0].views;
+      tp.innerHTML = d.topPages.map(p =>
+        '<div class="top-page-row"><span>' + p.page + '</span><span style="font-weight:600;">' + p.views + '</span></div>' +
+        '<div class="top-page-bar" style="width:' + Math.round((p.views / maxViews) * 100) + '%;background:rgba(59,130,246,' + (0.2 + (p.views / maxViews) * 0.5) + ');"></div>'
+      ).join('');
+    }
+  } catch (e) {
+    console.error('Live stats error:', e);
+  }
+}
+
+loadLiveStats();
+setInterval(loadLiveStats, 10000);
+</script>
+</body>
+</html>

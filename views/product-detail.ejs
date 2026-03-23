@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <%- include('partials/seo-head') %>
+
+  <!-- Product JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "<%= product.name %>",
+    "description": "<%= (product.description || '').replace(/<[^>]*>/g, '').replace(/"/g, '\\"').substring(0, 500) %>",
+    "image": "<%= product.image ? seoCanonical.split('/').slice(0,3).join('/') + product.image : '' %>",
+    "sku": "PRD-<%= product.id %>",
+    "brand": {
+      "@type": "Brand",
+      "name": "<%= settings.site_name %>"
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": "<%= seoCanonical %>",
+      "priceCurrency": "TRY",
+      "price": "<%= product.sale_price && product.sale_price < product.price ? product.sale_price : product.price %>",
+      <% if (product.sale_price && product.sale_price < product.price) { %>
+      "priceValidUntil": "<%= new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] %>",
+      <% } %>
+      "availability": "<%= product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' %>",
+      "seller": {
+        "@type": "Organization",
+        "name": "<%= settings.site_name %>"
+      }
+    }
+    <% if (product.category_name) { %>
+    ,"category": "<%= product.category_name %>"
+    <% } %>
+  }
+  </script>
+
+  <!-- BreadcrumbList JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Anasayfa",
+        "item": "<%= seoCanonical.split('/').slice(0,3).join('/') %>/"
+      }
+      <% if (product.category_slug) { %>
+      ,{
+        "@type": "ListItem",
+        "position": 2,
+        "name": "<%= product.category_name %>",
+        "item": "<%= seoCanonical.split('/').slice(0,3).join('/') %>/urunler?kategori=<%= product.category_slug %>"
+      }
+      ,{
+        "@type": "ListItem",
+        "position": 3,
+        "name": "<%= product.name %>",
+        "item": "<%= seoCanonical %>"
+      }
+      <% } else { %>
+      ,{
+        "@type": "ListItem",
+        "position": 2,
+        "name": "<%= product.name %>",
+        "item": "<%= seoCanonical %>"
+      }
+      <% } %>
+    ]
+  }
+  </script>
+</head>
+<body>
+  <%- include('partials/header') %>
+
+  <div class="container">
+    <div class="breadcrumb" style="padding:16px 0;font-size:13px;color:#888;">
+      <a href="/" style="color:#888;text-decoration:none;">Anasayfa</a>
+      <% if (product.category_slug) { %>
+      / <a href="/urunler?kategori=<%= product.category_slug %>" style="color:#888;text-decoration:none;"><%= product.category_name %></a>
+      <% } %>
+      / <span style="color:#333;"><%= product.name %></span>
+    </div>
+  </div>
+
+  <section class="product-detail">
+    <div class="container">
+      <div class="product-detail-grid">
+
+        <!-- ═══ GALERI ═══ -->
+        <div class="product-gallery">
+          <%
+            let allImages = [];
+            try {
+              const imgs = JSON.parse(product.images || '[]');
+              allImages = imgs.length > 0 ? imgs : (product.image ? [product.image] : []);
+            } catch(e) {
+              allImages = product.image ? [product.image] : [];
+            }
+          %>
+
+          <div class="gallery-layout">
+            <!-- Küçük resimler (sol dikey) -->
+            <% if (allImages.length > 1) { %>
+            <div class="gallery-thumbs" id="galleryThumbs">
+              <% allImages.forEach((img, i) => { %>
+              <div class="gallery-thumb <%= i === 0 ? 'active' : '' %>" onclick="switchImage('<%= img %>', this)">
+                <img src="<%= img %>" alt="<%= product.name %> - Görsel <%= i+1 %>" loading="lazy">
+              </div>
+              <% }); %>
+            </div>
+            <% } %>
+
+            <!-- Ana resim -->
+            <div class="gallery-main">
+              <img id="mainImage" src="<%= allImages[0] || '' %>" alt="<%= product.name %>">
+              <!-- Sağa/sola ok (birden fazla görsel varsa) -->
+              <% if (allImages.length > 1) { %>
+              <button class="gallery-arrow gallery-prev" onclick="galleryNav(-1)">&#8249;</button>
+              <button class="gallery-arrow gallery-next" onclick="galleryNav(1)">&#8250;</button>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ ÜRÜN BİLGİSİ ═══ -->
+        <div class="product-info-detail">
+          <% if (product.category_name) { %>
+          <span class="product-category"><%= product.category_name %></span>
+          <% } %>
+
+          <h1 class="product-title"><%= product.name %></h1>
+
+          <!-- Fiyat -->
+          <div class="product-price-detail">
+            <% if (product.sale_price && product.sale_price < product.price) { %>
+            <span class="price-old"><%= product.price.toLocaleString('tr-TR') %> ₺</span>
+            <span class="price-current"><%= product.sale_price.toLocaleString('tr-TR') %> ₺</span>
+            <span class="discount-badge">%<%= Math.round((1 - product.sale_price / product.price) * 100) %> İNDİRİM</span>
+            <% } else { %>
+            <span class="price-current"><%= product.price.toLocaleString('tr-TR') %> ₺</span>
+            <% } %>
+          </div>
+
+          <!-- ───── RENK VARYANTLARI ───── -->
+          <% if (colorVariants.length > 1) { %>
+          <div class="option-group color-variant-group">
+            <label>Renk: <strong id="currentColorName"><%= product.color_name || '' %></strong></label>
+            <div class="color-variant-list">
+              <% colorVariants.forEach(cv => { %>
+              <a href="/urun/<%= cv.slug %>"
+                 class="color-variant-item <%= cv.slug === product.slug ? 'active' : '' %>"
+                 title="<%= cv.color_name %>">
+                <% if (cv.image) { %>
+                <img src="<%= cv.image %>" alt="<%= cv.color_name %>">
+                <% } %>
+                <span class="cv-label"><%= cv.color_name %></span>
+              </a>
+              <% }); %>
+            </div>
+          </div>
+          <% } else if (product.color_name) { %>
+          <div class="option-group" style="margin-bottom:12px;">
+            <label style="font-size:13px;color:#888;">Renk: <strong style="color:#333;"><%= product.color_name %></strong></label>
+          </div>
+          <% } %>
+
+          <!-- ───── BEDEN SEÇİCİ ───── -->
+          <%
+            let sizesArr = [];
+            try { sizesArr = JSON.parse(product.sizes || '[]'); } catch(e) {}
+
+            // Standart beden formatları: 32-54 arası çift sayılar + XS/S/M/L/XL/XXL
+            const STANDARD_SIZES = new Set(['XS','S','M','L','XL','XXL','2XL','3XL',
+              '32','34','36','38','40','42','44','46','48','50','52','54']);
+            const validSizes = sizesArr.filter(s => {
+              if (!s || s === '0') return false;
+              const upper = s.toUpperCase();
+              if (STANDARD_SIZES.has(upper)) return true;
+              // Standart sayısal beden aralığı (34-54 arası çiftler)
+              const n = parseInt(s);
+              if (/^\d+$/.test(s) && n >= 32 && n <= 54 && n % 2 === 0) return true;
+              // Harf içeriyorsa geçerli say (ör. "2XL", "38-40")
+              if (/[a-zA-Z]/.test(s)) return true;
+              return false;
+            });
+            const isFreeSize = validSizes.length === 0 && sizesArr.length > 0;
+          %>
+          <% if (validSizes.length > 0) { %>
+          <div class="option-group">
+            <label>Beden: <strong id="selectedSizeLbl"><%= validSizes[0] %></strong></label>
+            <div class="size-options" id="sizeOptions">
+              <% validSizes.forEach((size, i) => { %>
+              <button class="size-btn <%= i === 0 ? 'active' : '' %>"
+                      data-size="<%= size %>"
+                      onclick="selectSize(this, '<%= size %>')"><%= size.toUpperCase() %></button>
+              <% }); %>
+            </div>
+          </div>
+          <% } else if (isFreeSize) { %>
+          <div class="option-group">
+            <label>Beden:</label>
+            <div class="size-options">
+              <button class="size-btn active" data-size="Standart" onclick="selectSize(this, 'Standart')">STANDART</button>
+            </div>
+            <p style="font-size:12px;color:#888;margin-top:6px;">Bu ürün serbest bedendir.</p>
+          </div>
+          <% } %>
+
+          <!-- Adet -->
+          <div class="quantity-group">
+            <label>Adet:</label>
+            <div class="quantity-selector">
+              <button onclick="updateQty(-1)">−</button>
+              <input type="number" id="quantity" value="1" min="1" max="10" readonly>
+              <button onclick="updateQty(1)">+</button>
+            </div>
+          </div>
+
+          <!-- Sepete Ekle -->
+          <div class="product-actions">
+            <button class="btn btn-primary btn-lg add-to-cart-btn" id="addToCartBtn" onclick="addToCartDetail()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 01-8 0"/>
+              </svg>
+              SEPETE EKLE
+            </button>
+            <button class="btn btn-outline-icon fav-btn <%= isFavorited ? 'active' : '' %>" onclick="toggleFavorite(<%= product.id %>)">
+              <svg width="20" height="20" viewBox="0 0 24 24"
+                   fill="<%= isFavorited ? 'currentColor' : 'none' %>"
+                   stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+              </svg>
+            </button>
+          </div>
+
+          <% if (product.stock > 0 && product.stock <= 5) { %>
+          <p class="stock-warning">⚡ Son <%= product.stock %> ürün!</p>
+          <% } %>
+
+          <!-- Özellikler -->
+          <div class="product-features">
+            <div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+              </svg>
+              Hızlı Kargo
+            </div>
+            <div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+              </svg>
+              14 Gün Ücretsiz İade
+            </div>
+            <div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+              256-Bit SSL Güvenli Ödeme
+            </div>
+          </div>
+
+          <!-- Kargo & İade Bilgisi -->
+          <div class="product-shipping-info">
+            <div class="shipping-info-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+              </svg>
+              <div>
+                <strong>2000₺ Üzeri Ücretsiz Kargo</strong>
+                <span>Siparişiniz 24–48 saat içinde kargoya verilir. Resmi tatillerde ilk iş günü gönderilir.</span>
+              </div>
+            </div>
+            <div class="shipping-info-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+              </svg>
+              <div>
+                <strong>5 Gün İade & Değişim</strong>
+                <span>Fatura tarihinden itibaren 5 gün içinde iade veya değişim yapabilirsiniz.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benzer Ürünler -->
+  <% if (relatedProducts.length > 0) { %>
+  <section class="section" style="padding-top:0;">
+    <div class="container">
+      <h2 class="section-title">BENZERİ ÜRÜNLER</h2>
+      <div class="products-grid">
+        <% relatedProducts.forEach(rp => { %>
+          <%- include('partials/product-card', { product: rp }) %>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- Değerlendirmeler -->
+  <section class="section" style="padding-top:0;">
+    <div class="container">
+      <div style="background:#fff;border-radius:14px;padding:28px;box-shadow:0 1px 6px rgba(0,0,0,.07);">
+
+        <!-- Başlık + Özet -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:20px;margin-bottom:24px;">
+          <div>
+            <h2 style="font-size:18px;font-weight:700;margin:0 0 6px;">Değerlendirmeler</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="display:flex;gap:2px;">
+                <% const avgRating = reviewStats.avg ? Math.round(reviewStats.avg * 10) / 10 : 0; %>
+                <% for (let s=1; s<=5; s++) { %>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="<%= s <= Math.round(avgRating) ? '#f59e0b' : '#e5e7eb' %>" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <% } %>
+              </div>
+              <span style="font-size:15px;font-weight:700;color:#111;"><%= avgRating %></span>
+              <span style="font-size:13px;color:#6b7280;">(<%= reviewStats.count || 0 %> değerlendirme)</span>
+            </div>
+          </div>
+          <button onclick="document.getElementById('reviewForm').style.display='block';this.style.display='none';" style="background:#111;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" id="writeReviewBtn">
+            ✍️ Yorum Yaz
+          </button>
+        </div>
+
+        <% if (reviewStats.count > 0) { %>
+        <!-- Yıldız dağılımı -->
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;max-width:320px;margin-bottom:24px;font-size:12px;color:#6b7280;">
+          <% [5,4,3,2,1].forEach(star => { %>
+          <% const cnt = reviewStats['r'+star] || 0; const pct = reviewStats.count > 0 ? Math.round(cnt/reviewStats.count*100) : 0; %>
+          <span><%= star %> ★</span>
+          <div style="height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;"><div style="height:100%;width:<%= pct %>%;background:#f59e0b;border-radius:3px;"></div></div>
+          <span><%= cnt %></span>
+          <% }); %>
+        </div>
+        <% } %>
+
+        <!-- Yorum Formu (gizli) -->
+        <div id="reviewForm" style="display:none;background:#f9fafb;border-radius:12px;padding:20px;margin-bottom:24px;border:1px solid #e5e7eb;">
+          <h4 style="font-size:14px;font-weight:700;margin:0 0 14px;">Yorum Yaz</h4>
+          <div style="display:flex;gap:3px;margin-bottom:12px;" id="starRating">
+            <% for (let s=1; s<=5; s++) { %>
+            <svg onclick="setRating(<%= s %>)" width="28" height="28" viewBox="0 0 24 24" fill="<%= s <= 5 ? '#f59e0b' : '#e5e7eb' %>" stroke="none" style="cursor:pointer;" class="star-icon" data-star="<%= s %>"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <% } %>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <input type="text" id="rvName" placeholder="Adınız *" style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;">
+            <input type="text" id="rvCity" placeholder="Şehriniz" style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;">
+          </div>
+          <textarea id="rvComment" placeholder="Ürün hakkında düşünceleriniz... *" rows="3" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;margin-bottom:10px;"></textarea>
+          <div style="display:flex;gap:10px;">
+            <button onclick="submitReview()" style="background:#111;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Gönder</button>
+            <button onclick="document.getElementById('reviewForm').style.display='none';document.getElementById('writeReviewBtn').style.display='block';" style="background:#f3f4f6;color:#555;border:none;padding:10px 16px;border-radius:8px;font-size:13px;cursor:pointer;">İptal</button>
+          </div>
+          <div id="reviewMsg" style="margin-top:8px;font-size:12px;display:none;"></div>
+        </div>
+
+        <!-- Yorum Listesi -->
+        <% if (reviews.length > 0) { %>
+        <div id="reviewsList">
+          <% reviews.forEach((rv, idx) => { %>
+          <div style="<%= idx > 0 ? 'border-top:1px solid #f3f4f6;' : '' %>padding:18px 0;<%= idx >= 5 ? 'display:none;' : '' %>" class="review-item">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:<%= ['#f0fdf4','#eff6ff','#faf5ff','#fff7ed','#fef2f2'][idx%5] %>;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:<%= ['#16a34a','#2563eb','#9333ea','#ea580c','#dc2626'][idx%5] %>;">
+                <%= rv.author_name.charAt(0).toUpperCase() %>
+              </div>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <strong style="font-size:13px;"><%= rv.author_name %></strong>
+                  <% if (rv.is_verified) { %>
+                  <span style="font-size:10px;background:#f0fdf4;color:#16a34a;padding:2px 6px;border-radius:4px;font-weight:600;">✓ Doğrulanmış Alıcı</span>
+                  <% } %>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#9ca3af;">
+                  <% if (rv.author_city) { %><span><%= rv.author_city %></span> · <% } %>
+                  <span><%= new Date(rv.created_at).toLocaleDateString('tr-TR', {day:'numeric',month:'long',year:'numeric'}) %></span>
+                </div>
+              </div>
+              <div style="display:flex;gap:1px;">
+                <% for (let s=1; s<=5; s++) { %>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="<%= s <= rv.rating ? '#f59e0b' : '#e5e7eb' %>" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <% } %>
+              </div>
+            </div>
+            <% if (rv.title) { %><p style="font-size:14px;font-weight:600;color:#111;margin:0 0 4px;"><%= rv.title %></p><% } %>
+            <p style="font-size:13px;color:#374151;line-height:1.6;margin:0 0 8px;"><%= rv.comment %></p>
+            <button onclick="markHelpful(<%= rv.id %>, this)" style="background:none;border:1px solid #e5e7eb;border-radius:6px;padding:4px 10px;font-size:11px;color:#6b7280;cursor:pointer;display:flex;align-items:center;gap:4px;">
+              👍 Faydalı<% if (rv.helpful_count > 0) { %> (<%= rv.helpful_count %>)<% } %>
+            </button>
+          </div>
+          <% }); %>
+        </div>
+        <% if (reviews.length > 5) { %>
+        <button onclick="document.querySelectorAll('.review-item').forEach(el=>el.style.display='block');this.style.display='none';" style="width:100%;padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#555;cursor:pointer;margin-top:8px;font-weight:500;">
+          Tüm Yorumları Göster (<%= reviews.length %>)
+        </button>
+        <% } %>
+        <% } else { %>
+        <div style="text-align:center;padding:30px;color:#9ca3af;">
+          <p style="font-size:14px;margin:0 0 4px;">Henüz yorum yapılmamış</p>
+          <p style="font-size:12px;margin:0;">Bu ürün hakkında ilk yorumu siz yazın!</p>
+        </div>
+        <% } %>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Mobil Sticky Sepete Ekle -->
+  <div class="sticky-atc" id="stickyAtc">
+    <button class="sticky-atc-btn" onclick="addToCartDetail()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+      SEPETE EKLE
+    </button>
+  </div>
+
+  <%- include('partials/footer') %>
+
+  <script src="/js/main.js"></script>
+  <script>
+    // ─── Galeri ───
+    const galleryImages = <%- JSON.stringify(allImages) %>;
+    let currentImageIdx = 0;
+
+    function switchImage(src, thumb) {
+      document.getElementById('mainImage').src = src;
+      document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+      if (thumb) thumb.classList.add('active');
+      currentImageIdx = galleryImages.indexOf(src);
+    }
+
+    function galleryNav(dir) {
+      currentImageIdx = (currentImageIdx + dir + galleryImages.length) % galleryImages.length;
+      const src = galleryImages[currentImageIdx];
+      document.getElementById('mainImage').src = src;
+      const thumbs = document.querySelectorAll('.gallery-thumb');
+      thumbs.forEach((t, i) => t.classList.toggle('active', i === currentImageIdx));
+    }
+
+    // ─── Beden ───
+    let selectedSize = '<%= validSizes.length > 0 ? validSizes[0] : (isFreeSize ? "Standart" : "") %>';
+
+    function selectSize(btn, size) {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedSize = size;
+      const lbl = document.getElementById('selectedSizeLbl');
+      if (lbl) lbl.textContent = size.toUpperCase();
+    }
+
+    // ─── Adet ───
+    function updateQty(delta) {
+      const input = document.getElementById('quantity');
+      const val = parseInt(input.value) + delta;
+      if (val >= 1 && val <= 10) input.value = val;
+    }
+
+    // ─── Sepete Ekle ───
+    function addToCartDetail() {
+      const quantity = parseInt(document.getElementById('quantity').value);
+      addToCart(<%= product.id %>, '<%= product.name.replace(/'/g, "\\'") %>', selectedSize, '');
+    }
+
+    // ─── Favori ───
+    function toggleFavorite(productId) {
+      fetch('/api/favorite/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const btn = document.querySelector('.fav-btn');
+          btn.classList.toggle('active', data.favorited);
+          btn.querySelector('svg path').setAttribute('fill', data.favorited ? 'currentColor' : 'none');
+        } else if (data.message) {
+          window.location.href = '/auth/giris';
+        }
+      });
+    }
+
+    // ─── Meta Pixel ViewContent ───
+    if (typeof fbq !== 'undefined') {
+      fbq('track', 'ViewContent', {
+        content_ids: ['<%= product.id %>'],
+        content_type: 'product',
+        value: <%= product.sale_price || product.price %>,
+        currency: 'TRY'
+      });
+    }
+
+    // ─── Yorumlar ───
+    let reviewRating = 5;
+    function setRating(n) {
+      reviewRating = n;
+      document.querySelectorAll('.star-icon').forEach(s => {
+        s.setAttribute('fill', parseInt(s.dataset.star) <= n ? '#f59e0b' : '#e5e7eb');
+      });
+    }
+    function submitReview() {
+      const name = document.getElementById('rvName').value.trim();
+      const city = document.getElementById('rvCity').value.trim();
+      const comment = document.getElementById('rvComment').value.trim();
+      if (!name || !comment) { alert('Ad ve yorum zorunludur'); return; }
+      fetch('/api/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: <%= product.id %>, name, city, rating: reviewRating, title: '', comment })
+      }).then(r => r.json()).then(data => {
+        const msg = document.getElementById('reviewMsg');
+        msg.style.display = 'block';
+        msg.style.color = data.success ? '#16a34a' : '#dc2626';
+        msg.textContent = data.message;
+        if (data.success) {
+          document.getElementById('rvName').value = '';
+          document.getElementById('rvComment').value = '';
+          setTimeout(() => { document.getElementById('reviewForm').style.display='none'; document.getElementById('writeReviewBtn').style.display='block'; }, 2000);
+        }
+      });
+    }
+    function markHelpful(id, btn) {
+      fetch('/api/review/helpful', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({reviewId:id}) })
+      .then(r => r.json()).then(d => { if(d.success) { btn.style.color='#16a34a'; btn.disabled=true; } });
+    }
+
+    // Sticky ATC — orijinal buton görünümden çıkınca göster
+    const stickyAtc = document.getElementById('stickyAtc');
+    const originalBtn = document.getElementById('addToCartBtn');
+    if (stickyAtc && originalBtn) {
+      const observer = new IntersectionObserver(([entry]) => {
+        if (!entry.isIntersecting) {
+          stickyAtc.classList.add('visible');
+        } else {
+          stickyAtc.classList.remove('visible');
+        }
+      }, { threshold: 0.1 });
+      observer.observe(originalBtn);
+    }
+  </script>
+</body>
+</html>

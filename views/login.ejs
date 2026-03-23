@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <%- include('partials/seo-head') %>
+</head>
+<body>
+  <%- include('partials/header') %>
+  <div class="page-header"><div class="container"><h1>GİRİŞ YAP</h1></div></div>
+  <section class="section">
+    <div class="container">
+      <div class="auth-form">
+        <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+        <form method="POST" action="/auth/giris">
+          <input type="hidden" name="redirect" value="<%= redirect %>">
+          <div class="form-group"><label>E-posta</label><input type="email" name="email" required></div>
+          <div class="form-group"><label>Şifre</label><input type="password" name="password" required></div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">GİRİŞ YAP</button>
+        </form>
+        <p class="auth-link">Hesabınız yok mu? <a href="/auth/kayit">Kayıt Olun</a></p>
+      </div>
+    </div>
+  </section>
+  <%- include('partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!-- Announcement Bar -->
+<% if (settings.announcement) { %>
+<div class="announcement-bar">
+  <p><%= settings.announcement %></p>
+</div>
+<% } %>
+
+<!-- Header -->
+<header class="header" id="header">
+  <div class="container header-inner">
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menü">
+      <span></span><span></span><span></span>
+    </button>
+
+    <a href="/" class="logo"><%= settings.site_name || 'FLAVORA' %></a>
+
+    <nav class="nav" id="mainNav">
+      <a href="/" class="<%= currentPath === '/' ? 'active' : '' %>">ANASAYFA</a>
+      <a href="/urunler?siralama=yeni" class="<%= currentPath.includes('yeni') ? 'active' : '' %>">YENİ ÜRÜNLER</a>
+      <% if (typeof allCategories !== 'undefined') {
+        const parentCats = allCategories.filter(c => !c.parent_id);
+        parentCats.forEach(cat => {
+          const children = allCategories.filter(c => c.parent_id === cat.id);
+      %>
+      <div class="nav-dropdown">
+        <a href="/urunler?kategori=<%= cat.slug %>" class="dropdown-trigger"><%= cat.name.toUpperCase() %>
+          <% if (children.length > 0) { %><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg><% } %>
+        </a>
+        <% if (children.length > 0) { %>
+        <div class="dropdown-menu">
+          <% children.forEach(child => { %>
+          <a href="/urunler?kategori=<%= child.slug %>"><%= child.name %></a>
+          <% }); %>
+        </div>
+        <% } %>
+      </div>
+      <% }); } %>
+      <a href="/urunler?indirim=1" class="nav-sale">İNDİRİM</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="search-toggle" id="searchToggle" aria-label="Ara">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </button>
+      <a href="<%= user ? '/siparislerim' : '/auth/giris' %>" class="header-icon" aria-label="Hesap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </a>
+      <% if (user) { %>
+      <a href="/favoriler" class="header-icon" aria-label="Favoriler">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        </svg>
+      </a>
+      <% } %>
+      <a href="/sepet" class="header-icon cart-icon" aria-label="Sepet">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        <span class="cart-badge" id="cartBadge"><%= cartCount %></span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Search overlay -->
+  <div class="search-overlay" id="searchOverlay">
+    <div class="container">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Ürün ara..." autocomplete="off">
+        <button id="searchClose" aria-label="Kapat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+</header>

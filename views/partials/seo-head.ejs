@@ -1,0 +1,43 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= typeof seoTitle !== 'undefined' && seoTitle ? seoTitle : (settings.site_name + ' - ' + settings.site_description) %></title>
+<meta name="description" content="<%= typeof seoDescription !== 'undefined' && seoDescription ? seoDescription : settings.site_description %>">
+<% var _hasCanonical = typeof seoCanonical !== 'undefined' && seoCanonical; %>
+<meta name="robots" content="<%= (typeof seoNoIndex !== 'undefined' && seoNoIndex) || !_hasCanonical ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1' %>">
+<% if (_hasCanonical) { %>
+<link rel="canonical" href="<%= seoCanonical %>">
+<% } %>
+
+<% if (_hasCanonical) { %>
+<!-- Open Graph -->
+<meta property="og:type" content="<%= typeof seoType !== 'undefined' && seoType ? seoType : 'website' %>">
+<meta property="og:title" content="<%= typeof seoTitle !== 'undefined' && seoTitle ? seoTitle : (settings.site_name + ' - ' + settings.site_description) %>">
+<meta property="og:description" content="<%= typeof seoDescription !== 'undefined' && seoDescription ? seoDescription : settings.site_description %>">
+<meta property="og:url" content="<%= typeof seoCanonical !== 'undefined' && seoCanonical ? seoCanonical : '' %>">
+<meta property="og:site_name" content="<%= settings.site_name %>">
+<meta property="og:locale" content="tr_TR">
+<% if (typeof seoImage !== 'undefined' && seoImage) { %>
+<meta property="og:image" content="<%= seoImage %>">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<% } %>
+<% if (typeof seoPrice !== 'undefined' && seoPrice) { %>
+<meta property="product:price:amount" content="<%= seoPrice %>">
+<meta property="product:price:currency" content="TRY">
+<% } %>
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<%= typeof seoTitle !== 'undefined' && seoTitle ? seoTitle : (settings.site_name + ' - ' + settings.site_description) %>">
+<meta name="twitter:description" content="<%= typeof seoDescription !== 'undefined' && seoDescription ? seoDescription : settings.site_description %>">
+<% if (typeof seoImage !== 'undefined' && seoImage) { %>
+<meta name="twitter:image" content="<%= seoImage %>">
+<% } %>
+<% } %>
+
+<!-- Performance -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">

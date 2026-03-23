@@ -1,0 +1,12 @@
+node_modules/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+uploads/*
+!uploads/.gitkeep
+.env
+.claude/
+seed-reviews.js
+scraper*.js
+seed.js

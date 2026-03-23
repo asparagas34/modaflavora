@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ayarlar - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .settings-section { background:#fff; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .settings-section h3 { margin:0 0 18px; font-size:15px; font-weight:700; color:#111; padding-bottom:12px; border-bottom:1px solid #f3f4f6; display:flex;align-items:center;gap:8px; }
+    .pixel-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:12px; }
+    .pixel-card label { font-weight:600; font-size:13px; color:#374151; margin-bottom:6px; display:block; }
+    .pixel-card small { color:#6b7280; font-size:12px; display:block; margin-top:4px; }
+    .toggle-row { display:flex; align-items:center; justify-content:space-between; }
+    .toggle { position:relative; display:inline-block; width:44px; height:24px; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .slider-toggle { position:absolute; cursor:pointer; top:0;left:0;right:0;bottom:0; background:#cbd5e1; border-radius:24px; transition:.3s; }
+    .slider-toggle:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background:white; border-radius:50%; transition:.3s; }
+    .toggle input:checked + .slider-toggle { background:#22c55e; }
+    .toggle input:checked + .slider-toggle:before { transform:translateX(20px); }
+    .form-row { display:grid; gap:16px; margin-bottom:16px; }
+    .form-row.two-col { grid-template-columns:1fr 1fr; }
+    .form-row.three-col { grid-template-columns:1fr 1fr 1fr; }
+    @media(max-width:768px){ .form-row.two-col,.form-row.three-col { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header"><h1>⚙️ Site Ayarları</h1></div>
+
+      <form method="POST" action="/admin/ayarlar" class="admin-form">
+
+        <!-- Genel Ayarlar -->
+        <div class="settings-section">
+          <h3>🏪 Genel</h3>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Site Adı</label><input type="text" name="site_name" value="<%= settings.site_name %>"></div>
+            <div class="form-group"><label>Site Açıklaması</label><input type="text" name="site_description" value="<%= settings.site_description %>"></div>
+          </div>
+          <div class="form-group"><label>📢 Duyuru Bandı</label><input type="text" name="announcement" value="<%= settings.announcement %>" placeholder="Ücretsiz kargo kampanyası vs..."></div>
+        </div>
+
+        <!-- İletişim -->
+        <div class="settings-section">
+          <h3>📞 İletişim</h3>
+          <div class="form-row three-col">
+            <div class="form-group"><label>Telefon</label><input type="text" name="phone" value="<%= settings.phone %>"></div>
+            <div class="form-group"><label>E-posta</label><input type="email" name="email" value="<%= settings.email %>"></div>
+            <div class="form-group"><label>Adres</label><input type="text" name="address" value="<%= settings.address %>"></div>
+          </div>
+        </div>
+
+        <!-- Sosyal Medya -->
+        <div class="settings-section">
+          <h3>📱 Sosyal Medya</h3>
+          <div class="form-row three-col">
+            <div class="form-group"><label>Instagram URL</label><input type="text" name="instagram" value="<%= settings.instagram %>" placeholder="https://instagram.com/..."></div>
+            <div class="form-group"><label>Facebook URL</label><input type="text" name="facebook" value="<%= settings.facebook %>"></div>
+            <div class="form-group"><label>Pinterest URL</label><input type="text" name="pinterest" value="<%= settings.pinterest %>"></div>
+          </div>
+        </div>
+
+        <!-- Kargo -->
+        <div class="settings-section">
+          <h3>🚚 Kargo</h3>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Ücretsiz Kargo Limiti (₺)</label><input type="number" name="free_shipping_limit" value="<%= settings.free_shipping_limit %>"></div>
+            <div class="form-group"><label>Kargo Ücreti (₺)</label><input type="number" step="0.01" name="shipping_cost" value="<%= settings.shipping_cost %>"></div>
+          </div>
+        </div>
+
+        <!-- Ödeme -->
+        <div class="settings-section">
+          <h3>💳 Ödeme Ayarları</h3>
+
+          <!-- Kapıda Ödeme Toggle -->
+          <div class="pixel-card" style="margin-bottom:16px;">
+            <div class="toggle-row">
+              <div>
+                <label>Kapıda Ödeme Aktif</label>
+                <small>Kapalıysa müşteriler sadece Havale/EFT ile ödeme yapabilir</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="cod_enabled" value="1" <%= settings.cod_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Havale / EFT Banka Bilgileri -->
+          <p style="font-size:12px;color:#6b7280;margin:0 0 12px;">🏦 Havale / EFT Banka Bilgileri</p>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Hesap Sahibi (Ad Soyad / Şirket)</label><input type="text" name="bank_holder" value="<%= settings.bank_holder || '' %>" placeholder="Ad Soyad veya Şirket Adı"></div>
+            <div class="form-group"><label>Banka Adı</label><input type="text" name="bank_name" value="<%= settings.bank_name || '' %>" placeholder="Örn: Ziraat Bankası"></div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group"><label>Şube / Şube Kodu</label><input type="text" name="bank_branch" value="<%= settings.bank_branch || '' %>" placeholder="Örn: Kadıköy Şubesi"></div>
+            <div class="form-group"><label>IBAN</label><input type="text" name="bank_iban" value="<%= settings.bank_iban || '' %>" placeholder="TR00 0000 0000 0000 0000 0000 00" style="font-family:monospace;letter-spacing:.5px;"></div>
+          </div>
+
+          <p style="font-size:12px;color:#6b7280;margin:16px 0 10px;">✏️ Ödeme Sayfası Metinleri</p>
+          <div class="form-group">
+            <label>Havale/EFT Seçenek Açıklaması</label>
+            <input type="text" name="payment_eft_desc" value="<%= settings.payment_eft_desc || '' %>" placeholder="Banka havalesi ile güvenli ödeme — sipariş onaylanır">
+            <small style="color:#6b7280;font-size:11px;">Ödeme ekranında Havale/EFT seçeneğinin altında görünür</small>
+          </div>
+          <div class="form-group">
+            <label>Havale Bilgi Notu (IBAN kutusunun altı)</label>
+            <textarea name="payment_eft_note" rows="3" style="resize:vertical;"><%= settings.payment_eft_note || '' %></textarea>
+            <small style="color:#6b7280;font-size:11px;">Sipariş tamamlandıktan sonra IBAN bilgileriyle birlikte gösterilir</small>
+          </div>
+        </div>
+
+        <!-- Meta Pixel -->
+        <div class="settings-section">
+          <h3>📊 Meta (Facebook) Pixel</h3>
+          <div class="pixel-card">
+            <div class="toggle-row">
+              <div>
+                <label>Meta Pixel Aktif</label>
+                <small>Pixel kodu otomatik olarak tüm sayfalara eklenir</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="meta_pixel_active" value="1" <%= settings.meta_pixel_active === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Meta Pixel ID</label>
+            <input type="text" name="meta_pixel_id" value="<%= settings.meta_pixel_id || '' %>" placeholder="Örn: 1234567890123456" style="font-family:monospace;">
+            <small style="color:#6b7280;font-size:12px;margin-top:4px;display:block;">Facebook Business Manager → Events Manager → Pixel ID</small>
+          </div>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-top:8px;font-size:12px;color:#92400e;">
+            💡 <strong>Otomatik Olaylar:</strong> PageView (her sayfa), ViewContent (ürün detay), AddToCart (sepete ekle), InitiateCheckout (ödeme başlat), Purchase (sipariş tamamla)
+          </div>
+
+          <!-- Conversions API (Server-Side) -->
+          <p style="font-size:12px;color:#6b7280;margin:18px 0 10px;">🔗 <strong>Conversions API (Server-Side Tracking)</strong></p>
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#1e40af;line-height:1.6;">
+            📌 <strong>Neden CAPI?</strong> Tarayıcı engelleme ve iOS gizlilik kısıtlamalarını atlatmak için server tarafından doğrudan Meta'ya event gönderir. Client-side pixel ile birlikte kullanıldığında event eşleştirme kalitesi artar.<br>
+            <strong>Kurulum:</strong> Events Manager → Settings → Conversions API → Generate Access Token
+          </div>
+          <div class="form-group">
+            <label>Conversions API Access Token</label>
+            <input type="text" name="meta_capi_token" value="<%= settings.meta_capi_token || '' %>" placeholder="EAAxxxxxxxxx..." style="font-family:monospace;font-size:11px;">
+            <small style="color:#6b7280;font-size:11px;">Events Manager → Settings → Generate Access Token</small>
+          </div>
+          <div class="form-group">
+            <label>Test Event Code <span style="font-weight:400;color:#aaa;">(isteğe bağlı)</span></label>
+            <input type="text" name="meta_capi_test_code" value="<%= settings.meta_capi_test_code || '' %>" placeholder="TEST12345" style="font-family:monospace;">
+            <small style="color:#6b7280;font-size:11px;">Test modunda event'leri görmek için. Events Manager → Test Events → Test Code. Yayına alırken boş bırakın.</small>
+          </div>
+        </div>
+
+        <!-- Google Analytics -->
+        <div class="settings-section">
+          <h3>📈 Google Analytics</h3>
+          <div class="pixel-card">
+            <div class="toggle-row">
+              <div>
+                <label>Google Analytics Aktif</label>
+                <small>GA4 Measurement ID ile takip</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="google_analytics_active" value="1" <%= settings.google_analytics_active === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:12px;">
+            <label>GA4 Measurement ID</label>
+            <input type="text" name="google_analytics_id" value="<%= settings.google_analytics_id || '' %>" placeholder="Örn: G-XXXXXXXXXX" style="font-family:monospace;">
+            <small style="color:#6b7280;font-size:12px;margin-top:4px;display:block;">Google Analytics → Admin → Data Streams → Measurement ID</small>
+          </div>
+        </div>
+
+        <!-- Telegram Bot -->
+        <div class="settings-section">
+          <h3>🤖 Telegram Bot</h3>
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#1e40af;line-height:1.6;">
+            📌 <strong>Kurulum:</strong><br>
+            1. Telegram'da <strong>@BotFather</strong>'a gidin ve <code>/newbot</code> yazın<br>
+            2. Bot adı ve kullanıcı adı belirleyin<br>
+            3. Size verilen <strong>token</strong>'ı aşağıya yapıştırın<br>
+            4. Botu başlattıktan sonra bota <code>/start</code> yazın — size Chat ID'nizi verecek<br>
+            5. Chat ID'yi de aşağıya girin
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Bot Token</label>
+              <input type="text" name="telegram_bot_token" value="<%= settings.telegram_bot_token || '' %>" placeholder="123456789:ABCdefGhIjKlMnOpQrStUvWxYz" style="font-family:monospace;font-size:12px;">
+            </div>
+            <div class="form-group">
+              <label>Chat ID</label>
+              <input type="text" name="telegram_chat_id" value="<%= settings.telegram_chat_id || '' %>" placeholder="Örn: 123456789" style="font-family:monospace;">
+              <small style="color:#6b7280;font-size:11px;margin-top:4px;display:block;">Bota /start yazınca size Chat ID'nizi söyler</small>
+            </div>
+          </div>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;font-size:12px;color:#166534;">
+            ✅ <strong>Bot Özellikleri:</strong> Yeni sipariş bildirimi, inline butonlarla sipariş onaylama/iptal/kargoya verme, sipariş detay görüntüleme
+          </div>
+        </div>
+
+        <!-- E-posta Ayarları (SMTP) -->
+        <div class="settings-section">
+          <h3>📧 E-posta Ayarları (SMTP)</h3>
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#1e40af;line-height:1.6;">
+            📌 <strong>SMTP Kurulumu:</strong> E-posta göndermek için bir SMTP sunucusu gereklidir.<br>
+            • <strong>Gmail:</strong> smtp.gmail.com / 587 / Uygulama Şifresi kullanın<br>
+            • <strong>Yandex:</strong> smtp.yandex.com / 465 (SSL) / Mail şifresi<br>
+            • <strong>Mailgun, SendGrid, Amazon SES</strong> gibi servisler de kullanılabilir
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>SMTP Sunucu</label>
+              <input type="text" name="smtp_host" value="<%= settings.smtp_host || '' %>" placeholder="smtp.gmail.com" style="font-family:monospace;">
+            </div>
+            <div class="form-group">
+              <label>Port</label>
+              <input type="text" name="smtp_port" value="<%= settings.smtp_port || '587' %>" placeholder="587" style="font-family:monospace;">
+            </div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Kullanıcı Adı (E-posta)</label>
+              <input type="text" name="smtp_user" value="<%= settings.smtp_user || '' %>" placeholder="mail@domain.com" style="font-family:monospace;">
+            </div>
+            <div class="form-group">
+              <label>Şifre / Uygulama Şifresi</label>
+              <input type="password" name="smtp_pass" value="<%= settings.smtp_pass || '' %>" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Gönderen Adı</label>
+              <input type="text" name="smtp_from_name" value="<%= settings.smtp_from_name || '' %>" placeholder="FLAVORA">
+            </div>
+            <div class="form-group">
+              <label>Gönderen E-posta</label>
+              <input type="text" name="smtp_from_email" value="<%= settings.smtp_from_email || '' %>" placeholder="siparis@domain.com">
+            </div>
+          </div>
+          <div class="pixel-card" style="margin-top:8px;">
+            <div class="toggle-row">
+              <div>
+                <label>SSL/TLS Bağlantı</label>
+                <small>Port 465 kullanıyorsanız aktif edin (587 için kapalı bırakın)</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="smtp_secure" value="1" <%= settings.smtp_secure === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+          </div>
+
+          <button type="button" onclick="testSmtp()" style="margin-top:12px;padding:8px 18px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#374151;">
+            📤 Test Maili Gönder
+          </button>
+          <span id="smtpTestResult" style="font-size:12px;margin-left:8px;"></span>
+        </div>
+
+        <!-- E-posta Otomasyonları -->
+        <div class="settings-section">
+          <h3>🤖 E-posta Otomasyonları</h3>
+
+          <!-- Sipariş Onay Maili -->
+          <div class="pixel-card" style="margin-bottom:12px;">
+            <div class="toggle-row">
+              <div>
+                <label>Sipariş Onay E-postası</label>
+                <small>Yeni sipariş oluşturulduğunda müşteriye otomatik onay maili gider</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="order_confirmation_enabled" value="1" <%= settings.order_confirmation_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Kargo Bildirimi -->
+          <div class="pixel-card" style="margin-bottom:12px;">
+            <div class="toggle-row">
+              <div>
+                <label>Kargo Bildirim E-postası</label>
+                <small>Sipariş kargoya verildiğinde müşteriye otomatik bildirim gider</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="shipping_notification_enabled" value="1" <%= settings.shipping_notification_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Terk Edilen Sepet -->
+          <div class="pixel-card" style="margin-bottom:12px;border-color:#f59e0b;">
+            <div class="toggle-row">
+              <div>
+                <label>🛒 Terk Edilen Sepet Hatırlatması</label>
+                <small>Checkout'a gelip sipariş vermeyenlere otomatik hatırlatma maili gider</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="abandoned_cart_enabled" value="1" <%= settings.abandoned_cart_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Bekleme Süresi (dakika)</label>
+              <input type="number" name="abandoned_cart_delay" value="<%= settings.abandoned_cart_delay || '30' %>" min="5" max="1440" placeholder="30">
+              <small style="color:#6b7280;font-size:11px;">Checkout'tan sonra kaç dakika beklenecek (varsayılan: 30)</small>
+            </div>
+            <div class="form-group">
+              <label>E-posta Konusu</label>
+              <input type="text" name="abandoned_cart_subject" value="<%= settings.abandoned_cart_subject || 'Sepetinizde ürünler sizi bekliyor!' %>">
+            </div>
+          </div>
+
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;font-size:12px;color:#92400e;">
+            💡 <strong>Nasıl çalışır?</strong> Müşteri checkout sayfasına gelip e-posta adresini girdiğinde sepet bilgileri kaydedilir. Belirtilen süre içinde sipariş tamamlanmazsa, otomatik hatırlatma maili gönderilir.
+          </div>
+        </div>
+
+        <div style="padding:0 0 20px;">
+          <button type="submit" class="btn btn-primary" style="min-width:200px;">💾 Ayarları Kaydet</button>
+        </div>
+      </form>
+    </main>
+  </div>
+  <script>
+    function testSmtp() {
+      const result = document.getElementById('smtpTestResult');
+      result.textContent = 'Gönderiliyor...';
+      result.style.color = '#6b7280';
+      fetch('/admin/api/test-smtp', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          result.textContent = data.success ? '✅ Test maili gönderildi!' : '❌ ' + (data.error || 'Hata');
+          result.style.color = data.success ? '#16a34a' : '#ef4444';
+        })
+        .catch(() => {
+          result.textContent = '❌ Bağlantı hatası';
+          result.style.color = '#ef4444';
+        });
+    }
+  </script>
+</body>
+</html>
