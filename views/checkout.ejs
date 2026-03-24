@@ -340,10 +340,10 @@
     // Meta Pixel InitiateCheckout
     if (typeof fbq !== 'undefined') {
       fbq('track', 'InitiateCheckout', {
-        content_ids: [<%= cart.map(i => `'${i.productId}'`).join(',') %>],
-        contents: [<%= cart.map(i => `{id:'${i.productId}',quantity:${i.quantity}}`).join(',') %>],
-        num_items: <%= cart.reduce((s, i) => s + i.quantity, 0) %>,
-        value: <%= cart.reduce((s, i) => s + i.price * i.quantity, 0) %>,
+        content_ids: [<%- cart.map(i => "'" + i.productId + "'").join(',') %>],
+        contents: [<%- cart.map(i => "{id:'" + i.productId + "',quantity:" + i.quantity + "}").join(',') %>],
+        num_items: <%- cart.reduce((s, i) => s + i.quantity, 0) %>,
+        value: <%- cart.reduce((s, i) => s + i.price * i.quantity, 0) %>,
         currency: 'TRY'
       });
     }
