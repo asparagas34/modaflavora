@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analitik - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    .analytics-grid { display:grid; gap:16px; }
+    .grid-2 { grid-template-columns:1fr 1fr; }
+    .grid-3 { grid-template-columns:1fr 1fr 1fr; }
+    .grid-4 { grid-template-columns:repeat(4,1fr); }
+    @media(max-width:1100px) { .grid-3,.grid-4{grid-template-columns:repeat(2,1fr);} }
+    @media(max-width:700px) { .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;} }
+
+    .a-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .a-card h3 { font-size:14px; font-weight:700; color:#374151; margin:0 0 16px; display:flex; align-items:center; gap:8px; }
+    .a-card h3 .badge { font-size:11px; background:#f3f4f6; color:#6b7280; padding:2px 8px; border-radius:12px; font-weight:500; }
+
+    /* KPI */
+    .kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:20px; }
+    @media(max-width:900px) { .kpi-grid{grid-template-columns:repeat(3,1fr);} }
+    @media(max-width:600px) { .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+    .kpi { background:#fff; border-radius:12px; padding:18px; box-shadow:0 1px 4px rgba(0,0,0,.06); border-left:4px solid #3b82f6; }
+    .kpi.green { border-left-color:#22c55e; }
+    .kpi.orange { border-left-color:#f97316; }
+    .kpi.purple { border-left-color:#a855f7; }
+    .kpi.red { border-left-color:#ef4444; }
+    .kpi-val { font-size:24px; font-weight:800; color:#111; }
+    .kpi-label { font-size:11px; color:#9ca3af; margin-top:2px; font-weight:500; text-transform:uppercase; letter-spacing:.04em; }
+    .kpi-sub { font-size:11px; color:#6b7280; margin-top:4px; }
+
+    /* Funnel */
+    .funnel { display:flex; align-items:stretch; gap:0; margin:8px 0; }
+    .funnel-step { flex:1; text-align:center; padding:16px 8px; position:relative; }
+    .funnel-step:not(:last-child)::after { content:''; position:absolute; right:-12px; top:50%; transform:translateY(-50%); width:0; height:0; border-top:12px solid transparent; border-bottom:12px solid transparent; border-left:12px solid; z-index:1; }
+    .funnel-step:nth-child(1) { background:#eff6ff; border-radius:10px 0 0 10px; }
+    .funnel-step:nth-child(1)::after { border-left-color:#eff6ff; }
+    .funnel-step:nth-child(2) { background:#fef9c3; }
+    .funnel-step:nth-child(2)::after { border-left-color:#fef9c3; }
+    .funnel-step:nth-child(3) { background:#fed7aa; }
+    .funnel-step:nth-child(3)::after { border-left-color:#fed7aa; }
+    .funnel-step:nth-child(4) { background:#bbf7d0; border-radius:0 10px 10px 0; }
+    .funnel-val { font-size:22px; font-weight:800; color:#111; }
+    .funnel-label { font-size:11px; color:#6b7280; margin-top:2px; }
+    .funnel-rate { font-size:10px; font-weight:700; color:#22c55e; margin-top:4px; }
+    .funnel-rate.bad { color:#ef4444; }
+    .funnel-drop { font-size:10px; color:#ef4444; font-weight:600; }
+
+    /* Table */
+    .a-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .a-table th { text-align:left; padding:8px 10px; font-size:11px; font-weight:600; color:#9ca3af; border-bottom:1px solid #f3f4f6; text-transform:uppercase; letter-spacing:.04em; }
+    .a-table td { padding:9px 10px; border-bottom:1px solid #f9fafb; }
+    .a-table tr:last-child td { border-bottom:none; }
+    .a-table .thumb { width:32px; height:32px; object-fit:cover; border-radius:6px; }
+    .a-table .bar { height:6px; background:#e5e7eb; border-radius:3px; min-width:60px; }
+    .a-table .bar-fill { height:100%; border-radius:3px; background:#3b82f6; }
+
+    /* Filter */
+    .filter-bar { background:#fff; border-radius:12px; padding:14px 18px; box-shadow:0 1px 4px rgba(0,0,0,.06); margin-bottom:20px; display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+    .quick-btns { display:flex; gap:6px; flex-wrap:wrap; }
+    .q-btn { padding:6px 14px; border-radius:8px; border:1px solid #e5e7eb; background:#f9fafb; font-size:12px; font-weight:500; color:#374151; cursor:pointer; text-decoration:none; transition:all .15s; }
+    .q-btn:hover, .q-btn.active { background:#111; color:#fff; border-color:#111; }
+    .filter-sep { width:1px; height:28px; background:#e5e7eb; }
+    .d-inputs { display:flex; align-items:center; gap:8px; }
+    .d-inputs input[type=date] { padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; font-family:inherit; color:#374151; background:#f9fafb; }
+    .d-inputs label { font-size:12px; color:#6b7280; }
+    .btn-apply { padding:7px 16px; background:#111; color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+
+    /* Export bar */
+    .export-bar { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid #f3f4f6; }
+    .export-btn { padding:6px 14px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; font-size:12px; font-weight:500; color:#374151; cursor:pointer; font-family:inherit; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
+    .export-btn:hover { background:#111; color:#fff; border-color:#111; }
+    .export-btn svg { width:14px; height:14px; }
+
+    /* Status badge */
+    .s-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+    .s-badge.pending { background:#fef9c3; color:#a16207; }
+    .s-badge.pending_payment { background:#fef3c7; color:#92400e; }
+    .s-badge.processing { background:#dbeafe; color:#1d4ed8; }
+    .s-badge.shipped { background:#e0e7ff; color:#4338ca; }
+    .s-badge.delivered { background:#dcfce7; color:#166534; }
+    .s-badge.cancelled { background:#fee2e2; color:#991b1b; }
+
+    /* Problem alert */
+    .alert-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:14px 18px; margin-bottom:16px; }
+    .alert-box.warn { background:#fffbeb; border-color:#fde68a; }
+    .alert-box.ok { background:#f0fdf4; border-color:#bbf7d0; }
+    .alert-title { font-size:13px; font-weight:700; color:#991b1b; margin-bottom:4px; }
+    .alert-box.warn .alert-title { color:#92400e; }
+    .alert-box.ok .alert-title { color:#166534; }
+    .alert-text { font-size:12px; color:#6b7280; line-height:1.5; }
+
+    .mb-20 { margin-bottom:20px; }
+    canvas { max-height:280px; }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <%- include('sidebar') %>
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>Detayli Analitik</h1>
+        <div class="admin-user">
+          <span><%= user.name %></span>
+          <a href="/auth/cikis" style="margin-left:12px;color:#ef4444;font-size:13px;">Cikis</a>
+        </div>
+      </div>
+
+      <!-- Tarih Filtresi -->
+      <form method="GET" action="/admin/analitik">
+        <div class="filter-bar">
+          <div class="quick-btns">
+            <a href="/admin/analitik?baslangic=<%= new Date().toISOString().slice(0,10) %>&bitis=<%= new Date().toISOString().slice(0,10) %>" class="q-btn">Bugun</a>
+            <a href="/admin/analitik?baslangic=<%= (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>" class="q-btn">Son 7 Gun</a>
+            <a href="/admin/analitik?baslangic=<%= (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>" class="q-btn">Bu Ay</a>
+            <a href="/admin/analitik?baslangic=<%= (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>" class="q-btn active">Son 30 Gun</a>
+            <a href="/admin/analitik?baslangic=<%= (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0,10); })() %>&bitis=<%= new Date().toISOString().slice(0,10) %>" class="q-btn">Son 90 Gun</a>
+          </div>
+          <div class="filter-sep"></div>
+          <div class="d-inputs">
+            <label>Baslangic</label>
+            <input type="date" name="baslangic" value="<%= startDate %>">
+            <label>Bitis</label>
+            <input type="date" name="bitis" value="<%= endDate %>">
+            <button type="submit" class="btn-apply">Uygula</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- ═══ SORUN TESPİTİ ═══ -->
+      <%
+        const dayCount = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / (86400000)) + 1);
+        const dailyAvgOrders = kpi.totalOrders / dayCount;
+        const cancelledRow = statusBreakdown.find(s => s.status === 'cancelled');
+        const cancelRate = kpi.totalOrders > 0 && cancelledRow ? ((cancelledRow.count / (kpi.totalOrders + cancelledRow.count)) * 100).toFixed(1) : 0;
+        const abandonedRate = abandonedStats.total > 0 ? (((abandonedStats.total - abandonedStats.recovered) / abandonedStats.total) * 100).toFixed(1) : 0;
+        const pendingPaymentRow = statusBreakdown.find(s => s.status === 'pending_payment');
+        const pendingPaymentCount = pendingPaymentRow ? pendingPaymentRow.count : 0;
+
+        // Funnel verileri (live tracker'dan)
+        const funnelViews = liveStats.today.pageViews || 0;
+        const funnelCarts = liveStats.today.cartAdds || 0;
+        const funnelCheckouts = liveStats.today.checkouts || 0;
+        const funnelOrders = liveStats.today.orders || 0;
+      %>
+
+      <% if (kpi.totalOrders < 3 && dayCount >= 7) { %>
+      <div class="alert-box">
+        <div class="alert-title">Dusuk Siparis Uyarisi</div>
+        <div class="alert-text"><%= dayCount %> gun icinde sadece <%= kpi.totalOrders %> siparis var. Reklam hedeflemenizi veya urun fiyatlarini gozden gecirin.</div>
+      </div>
+      <% } %>
+      <% if (cancelRate > 15) { %>
+      <div class="alert-box">
+        <div class="alert-title">Yuksek Iptal Orani: %<%= cancelRate %></div>
+        <div class="alert-text">Iptallerin %15'in uzerinde olmasi sorun isareti. Musteriyle iletisime gecin ve sebebi arastirin.</div>
+      </div>
+      <% } %>
+      <% if (abandonedRate > 60) { %>
+      <div class="alert-box warn">
+        <div class="alert-title">Terk Edilen Sepet Orani: %<%= abandonedRate %></div>
+        <div class="alert-text">Checkout'a gelen musterilerin %<%= abandonedRate %>'i siparis vermiyor. Checkout sureci, odeme secenekleri veya kargo ucretini gozden gecirin.</div>
+      </div>
+      <% } %>
+      <% if (pendingPaymentCount > 5) { %>
+      <div class="alert-box warn">
+        <div class="alert-title"><%= pendingPaymentCount %> Siparis Odeme Bekliyor</div>
+        <div class="alert-text">Havale/EFT ile siparis verilmis ama odeme yapilmamis. Musterilere hatirlama mesaji gonderin.</div>
+      </div>
+      <% } %>
+
+      <!-- ═══ KPI'LAR ═══ -->
+      <div class="kpi-grid mb-20">
+        <div class="kpi">
+          <div class="kpi-val"><%= kpi.totalOrders %></div>
+          <div class="kpi-label">Toplam Siparis</div>
+          <div class="kpi-sub">Gunluk ort: <%= dailyAvgOrders.toFixed(1) %></div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-val"><%= Number(kpi.totalRevenue).toLocaleString('tr-TR', {maximumFractionDigits:0}) %> TL</div>
+          <div class="kpi-label">Toplam Gelir</div>
+          <div class="kpi-sub">Gunluk ort: <%= Number(kpi.totalRevenue / dayCount).toLocaleString('tr-TR', {maximumFractionDigits:0}) %> TL</div>
+        </div>
+        <div class="kpi orange">
+          <div class="kpi-val"><%= Number(kpi.avgOrder).toLocaleString('tr-TR', {maximumFractionDigits:0}) %> TL</div>
+          <div class="kpi-label">Ort. Siparis Degeri</div>
+        </div>
+        <div class="kpi purple">
+          <div class="kpi-val"><%= kpi.uniqueCustomers %></div>
+          <div class="kpi-label">Benzersiz Musteri</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-val"><%= Number(abandonedStats.lostValue).toLocaleString('tr-TR', {maximumFractionDigits:0}) %> TL</div>
+          <div class="kpi-label">Kaybedilen Gelir</div>
+          <div class="kpi-sub"><%= abandonedStats.total - abandonedStats.recovered %> terk edilen sepet</div>
+        </div>
+      </div>
+
+      <!-- ═══ BUGUNUN DONUSUM HUNİSİ (Live Tracker) ═══ -->
+      <div class="a-card mb-20">
+        <h3>Bugunun Donusum Hunisi <span class="badge">Canli</span></h3>
+        <div class="funnel">
+          <div class="funnel-step">
+            <div class="funnel-val"><%= funnelViews %></div>
+            <div class="funnel-label">Sayfa Goruntulenme</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-val"><%= funnelCarts %></div>
+            <div class="funnel-label">Sepete Ekleme</div>
+            <div class="funnel-rate <%= funnelViews > 0 && (funnelCarts/funnelViews*100) < 3 ? 'bad' : '' %>">
+              %<%= funnelViews > 0 ? (funnelCarts/funnelViews*100).toFixed(1) : '0' %>
+            </div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-val"><%= funnelCheckouts %></div>
+            <div class="funnel-label">Checkout</div>
+            <div class="funnel-rate <%= funnelCarts > 0 && (funnelCheckouts/funnelCarts*100) < 30 ? 'bad' : '' %>">
+              %<%= funnelCarts > 0 ? (funnelCheckouts/funnelCarts*100).toFixed(1) : '0' %>
+            </div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-val"><%= funnelOrders %></div>
+            <div class="funnel-label">Siparis</div>
+            <div class="funnel-rate <%= funnelCheckouts > 0 && (funnelOrders/funnelCheckouts*100) < 40 ? 'bad' : '' %>">
+              %<%= funnelCheckouts > 0 ? (funnelOrders/funnelCheckouts*100).toFixed(1) : '0' %>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#9ca3af;margin:8px 0 0;">Hunisi verileri sunucu yeniden basladiginda sifirlanir (in-memory). Kalici veri icin asagidaki grafiklere bakin.</p>
+      </div>
+
+      <!-- ═══ GUNLUK TREND GRAFİĞİ ═══ -->
+      <div class="a-card mb-20">
+        <h3>Gunluk Gelir & Siparis Trendi</h3>
+        <div style="position:relative;height:280px;">
+          <canvas id="dailyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- ═══ İKİ KOLON: SAAT + GUN ═══ -->
+      <div class="analytics-grid grid-2 mb-20">
+        <div class="a-card">
+          <h3>Saate Gore Siparis Dagilimi</h3>
+          <div style="position:relative;height:240px;">
+            <canvas id="hourlyChart"></canvas>
+          </div>
+        </div>
+        <div class="a-card">
+          <h3>Gune Gore Siparis Dagilimi</h3>
+          <div style="position:relative;height:240px;">
+            <canvas id="weekdayChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ İKİ KOLON: ŞEHİR + ÖDEME ═══ -->
+      <div class="analytics-grid grid-2 mb-20">
+        <!-- Sehir Kirilimi -->
+        <div class="a-card">
+          <h3>Sehir Bazli Siparisler <span class="badge">Top 20</span></h3>
+          <% if (cityData.length === 0) { %>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;padding:24px;">Veri yok</p>
+          <% } else { %>
+          <div style="max-height:360px;overflow-y:auto;">
+            <table class="a-table">
+              <thead><tr><th>Sehir</th><th>Siparis</th><th>Gelir</th><th>Ort.</th><th></th></tr></thead>
+              <tbody>
+                <% const maxCityOrders = cityData[0]?.orders || 1; %>
+                <% cityData.forEach(c => { %>
+                <tr>
+                  <td style="font-weight:600;color:#111;"><%= c.city %></td>
+                  <td><%= c.orders %></td>
+                  <td style="color:#22c55e;font-weight:600;"><%= Number(c.revenue).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</td>
+                  <td style="color:#6b7280;"><%= Number(c.avgOrder).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</td>
+                  <td><div class="bar"><div class="bar-fill" style="width:<%= (c.orders/maxCityOrders*100).toFixed(0) %>%"></div></div></td>
+                </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </div>
+
+        <!-- Odeme Yontemi + Siparis Durumu -->
+        <div class="a-card">
+          <h3>Siparis Durumu Dagilimi</h3>
+          <%
+            const statusLabels = {
+              'pending': 'Onay Bekliyor',
+              'pending_payment': 'Odeme Bekliyor',
+              'processing': 'Hazirlaniyor',
+              'shipped': 'Kargoda',
+              'delivered': 'Teslim Edildi',
+              'cancelled': 'Iptal'
+            };
+            const totalAllOrders = statusBreakdown.reduce((s,r) => s + r.count, 0) || 1;
+          %>
+          <% statusBreakdown.forEach(s => { %>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
+            <span class="s-badge <%= s.status %>"><%= statusLabels[s.status] || s.status %></span>
+            <span style="flex:1;"></span>
+            <span style="font-weight:700;font-size:14px;"><%= s.count %></span>
+            <span style="font-size:12px;color:#9ca3af;">(%<%= (s.count/totalAllOrders*100).toFixed(0) %>)</span>
+            <span style="font-size:12px;color:#22c55e;font-weight:600;"><%= Number(s.revenue).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</span>
+          </div>
+          <% }); %>
+
+          <h3 style="margin-top:20px;">Odeme Yontemi</h3>
+          <% paymentData.forEach(p => { %>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
+            <span style="font-weight:600;color:#111;"><%= p.payment_method === 'eft' ? 'EFT/Havale' : p.payment_method === 'cod' ? 'Kapida Odeme' : p.payment_method %></span>
+            <span style="flex:1;"></span>
+            <span style="font-weight:700;"><%= p.orders %> siparis</span>
+            <span style="font-size:12px;color:#22c55e;font-weight:600;"><%= Number(p.revenue).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</span>
+          </div>
+          <% }); %>
+        </div>
+      </div>
+
+      <!-- ═══ TOP URUNLER ═══ -->
+      <div class="a-card mb-20">
+        <h3>En Cok Satan Urunler <span class="badge">Top 15</span></h3>
+        <% if (topProducts.length === 0) { %>
+          <p style="color:#9ca3af;font-size:13px;text-align:center;padding:24px;">Bu donemde satis verisi yok.</p>
+        <% } else { %>
+        <div style="overflow-x:auto;">
+          <table class="a-table">
+            <thead><tr><th>#</th><th></th><th>Urun</th><th>Satilan</th><th>Gelir</th><th>Siparis Sayisi</th></tr></thead>
+            <tbody>
+              <% topProducts.forEach((p, i) => { %>
+              <tr>
+                <td style="font-weight:700;color:<%= i<3?'#f97316':'#9ca3af' %>;"><%= i+1 %></td>
+                <td><% if(p.image) { %><img src="<%= p.image %>" class="thumb"><% } %></td>
+                <td style="font-weight:500;color:#111;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= p.name %>"><%= p.name %></td>
+                <td style="font-weight:700;"><%= p.sold %> adet</td>
+                <td style="font-weight:700;color:#22c55e;"><%= Number(p.revenue||0).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</td>
+                <td><%= p.orderCount %></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+
+      <!-- ═══ İKİ KOLON: KATEGORİ + BEDEN ═══ -->
+      <div class="analytics-grid grid-2 mb-20">
+        <div class="a-card">
+          <h3>Kategori Kirilimi</h3>
+          <% if (categoryData.length === 0) { %>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;padding:24px;">Veri yok</p>
+          <% } else { %>
+          <div style="position:relative;height:260px;">
+            <canvas id="categoryChart"></canvas>
+          </div>
+          <% } %>
+        </div>
+        <div class="a-card">
+          <h3>Beden Dagilimi</h3>
+          <% if (sizeData.length === 0) { %>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;padding:24px;">Veri yok</p>
+          <% } else { %>
+          <div style="position:relative;height:260px;">
+            <canvas id="sizeChart"></canvas>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- ═══ SİPARİS DEĞERİ DAĞILIMI ═══ -->
+      <div class="analytics-grid grid-2 mb-20">
+        <div class="a-card">
+          <h3>Siparis Degeri Dagilimi</h3>
+          <% if (orderValueBuckets.length === 0) { %>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;padding:24px;">Veri yok</p>
+          <% } else { %>
+          <div style="position:relative;height:240px;">
+            <canvas id="valueBucketChart"></canvas>
+          </div>
+          <% } %>
+        </div>
+
+        <!-- Tekrar Eden Musteriler -->
+        <div class="a-card">
+          <h3>Tekrar Eden Musteriler <span class="badge"><%= repeatCustomers.length %></span></h3>
+          <% if (repeatCustomers.length === 0) { %>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;padding:24px;">Bu donemde tekrar siparis veren musteri yok</p>
+          <% } else { %>
+          <div style="max-height:300px;overflow-y:auto;">
+            <table class="a-table">
+              <thead><tr><th>Musteri</th><th>Siparis</th><th>Toplam</th></tr></thead>
+              <tbody>
+                <% repeatCustomers.forEach(c => { %>
+                <tr>
+                  <td style="font-weight:500;color:#111;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><%= c.guest_email %></td>
+                  <td style="font-weight:700;"><%= c.orderCount %>x</td>
+                  <td style="color:#22c55e;font-weight:600;"><%= Number(c.totalSpent).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</td>
+                </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- ═══ TERK EDİLEN SEPET ANALİZİ ═══ -->
+      <div class="a-card mb-20">
+        <h3>Terk Edilen Sepet Analizi</h3>
+        <div class="kpi-grid" style="margin-bottom:16px;">
+          <div class="kpi">
+            <div class="kpi-val"><%= abandonedStats.total %></div>
+            <div class="kpi-label">Toplam Terk</div>
+          </div>
+          <div class="kpi green">
+            <div class="kpi-val"><%= abandonedStats.recovered %></div>
+            <div class="kpi-label">Kurtarilan</div>
+            <div class="kpi-sub">%<%= abandonedStats.total > 0 ? (abandonedStats.recovered/abandonedStats.total*100).toFixed(0) : 0 %></div>
+          </div>
+          <div class="kpi orange">
+            <div class="kpi-val"><%= abandonedStats.emailSentNotRecovered %></div>
+            <div class="kpi-label">Mail Gonderildi (Donmedi)</div>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-val"><%= abandonedStats.noAction %></div>
+            <div class="kpi-label">Islem Yapilmadi</div>
+          </div>
+          <div class="kpi purple">
+            <div class="kpi-val"><%= Number(abandonedStats.lostValue).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</div>
+            <div class="kpi-label">Kaybedilen Deger</div>
+          </div>
+        </div>
+
+        <% if (recentAbandoned.length > 0) { %>
+        <h3 style="font-size:13px;margin:16px 0 10px;">Son Terk Edilen Sepetler</h3>
+        <div style="max-height:300px;overflow-y:auto;">
+          <table class="a-table">
+            <thead><tr><th>Musteri</th><th>Email</th><th>Tutar</th><th>Mail</th><th>Kurtarildi</th><th>Tarih</th></tr></thead>
+            <tbody>
+              <% recentAbandoned.forEach(a => { %>
+              <tr>
+                <td><%= a.guest_name || '-' %></td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><%= a.email || '-' %></td>
+                <td style="font-weight:600;"><%= Number(a.cart_total).toLocaleString('tr-TR',{maximumFractionDigits:0}) %> TL</td>
+                <td><%= a.email_sent ? 'Evet' : 'Hayir' %></td>
+                <td><span style="color:<%= a.recovered ? '#22c55e' : '#ef4444' %>;font-weight:600;"><%= a.recovered ? 'Evet' : 'Hayir' %></span></td>
+                <td style="font-size:11px;color:#9ca3af;"><%= new Date(a.created_at).toLocaleString('tr-TR') %></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+
+      <!-- ═══ DIŞA AKTARMA ═══ -->
+      <div class="a-card mb-20">
+        <h3>Veri Disa Aktarma</h3>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px;">Secili tarih araligindaki verileri XLSX veya CSV olarak indirin.</p>
+        <div class="export-bar" style="border-top:none;padding-top:0;">
+          <button onclick="exportData('orders','xlsx')" class="export-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Siparisler (XLSX)
+          </button>
+          <button onclick="exportData('order_items','xlsx')" class="export-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Siparis Kalemleri (XLSX)
+          </button>
+          <button onclick="exportData('products','xlsx')" class="export-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Urun Performansi (XLSX)
+          </button>
+          <button onclick="exportData('cities','xlsx')" class="export-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Sehir Kirilimi (XLSX)
+          </button>
+          <button onclick="exportData('abandoned','xlsx')" class="export-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Terk Edilen Sepetler (XLSX)
+          </button>
+        </div>
+        <div class="export-bar">
+          <button onclick="exportData('orders','csv')" class="export-btn">Siparisler (CSV)</button>
+          <button onclick="exportData('order_items','csv')" class="export-btn">Siparis Kalemleri (CSV)</button>
+          <button onclick="exportData('products','csv')" class="export-btn">Urunler (CSV)</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+<script>
+const startDate = '<%= startDate %>';
+const endDate = '<%= endDate %>';
+
+// ─── CHARTS ───
+const COLORS = ['#3b82f6','#22c55e','#f97316','#a855f7','#14b8a6','#ef4444','#eab308','#6366f1','#ec4899','#06b6d4'];
+
+// Daily trend
+(function(){
+  const data = <%- JSON.stringify(dailyData) %>;
+  const ctx = document.getElementById('dailyChart');
+  if(!ctx || !data.length) return;
+  new Chart(ctx.getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: data.map(d => { const dt=new Date(d.date+'T00:00:00'); return dt.toLocaleDateString('tr-TR',{day:'2-digit',month:'short'}); }),
+      datasets:[
+        { label:'Gelir (TL)', data:data.map(d=>d.revenue), backgroundColor:'rgba(59,130,246,.15)', borderColor:'#3b82f6', borderWidth:2, borderRadius:4, yAxisID:'y' },
+        { label:'Siparis', data:data.map(d=>d.orders), type:'line', borderColor:'#f97316', backgroundColor:'transparent', borderWidth:2, pointRadius:3, pointBackgroundColor:'#f97316', tension:.3, yAxisID:'y1' }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11},usePointStyle:true}}},
+      scales:{
+        y:{position:'left',grid:{color:'#f3f4f6'},ticks:{font:{size:11},callback:v=>v.toLocaleString('tr-TR')+'TL'}},
+        y1:{position:'right',grid:{display:false},ticks:{font:{size:11}},beginAtZero:true},
+        x:{grid:{display:false},ticks:{font:{size:10}}}
+      }
+    }
+  });
+})();
+
+// Hourly
+(function(){
+  const data = <%- JSON.stringify(hourlyData) %>;
+  const ctx = document.getElementById('hourlyChart');
+  if(!ctx) return;
+  const hours = Array.from({length:24},(_,i)=>i);
+  const map = {};
+  data.forEach(d => map[d.hour] = d.orders);
+  new Chart(ctx.getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: hours.map(h => h.toString().padStart(2,'0')+':00'),
+      datasets:[{label:'Siparis',data:hours.map(h=>map[h]||0),backgroundColor:'rgba(59,130,246,.6)',borderRadius:4}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#f3f4f6'},beginAtZero:true,ticks:{font:{size:10}}}}
+    }
+  });
+})();
+
+// Weekday
+(function(){
+  const data = <%- JSON.stringify(weekdayData) %>;
+  const ctx = document.getElementById('weekdayChart');
+  if(!ctx) return;
+  const dayNames = ['Pazar','Pazartesi','Sali','Carsamba','Persembe','Cuma','Cumartesi'];
+  const map = {};
+  data.forEach(d => map[d.dayNum] = d.orders);
+  new Chart(ctx.getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: [1,2,3,4,5,6,0].map(i=>dayNames[i]),
+      datasets:[{label:'Siparis',data:[1,2,3,4,5,6,0].map(i=>map[i]||0),backgroundColor:COLORS.slice(0,7),borderRadius:6}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#f3f4f6'},beginAtZero:true,ticks:{font:{size:10}}}}
+    }
+  });
+})();
+
+// Category
+(function(){
+  const data = <%- JSON.stringify(categoryData) %>;
+  const ctx = document.getElementById('categoryChart');
+  if(!ctx || !data.length) return;
+  new Chart(ctx.getContext('2d'), {
+    type:'doughnut',
+    data:{
+      labels: data.map(d=>d.name),
+      datasets:[{data:data.map(d=>d.revenue),backgroundColor:COLORS}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{font:{size:11},padding:12}},
+        tooltip:{callbacks:{label:ctx=>' '+Number(ctx.raw).toLocaleString('tr-TR')+' TL'}}}
+    }
+  });
+})();
+
+// Size
+(function(){
+  const data = <%- JSON.stringify(sizeData) %>;
+  const ctx = document.getElementById('sizeChart');
+  if(!ctx || !data.length) return;
+  new Chart(ctx.getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: data.map(d=>d.size),
+      datasets:[{label:'Satilan',data:data.map(d=>d.sold),backgroundColor:COLORS,borderRadius:6}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#f3f4f6'},beginAtZero:true}}
+    }
+  });
+})();
+
+// Value buckets
+(function(){
+  const data = <%- JSON.stringify(orderValueBuckets) %>;
+  const ctx = document.getElementById('valueBucketChart');
+  if(!ctx || !data.length) return;
+  new Chart(ctx.getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: data.map(d=>d.bucket+' TL'),
+      datasets:[{label:'Siparis',data:data.map(d=>d.orders),backgroundColor:'rgba(168,85,247,.6)',borderRadius:6}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#f3f4f6'},beginAtZero:true}}
+    }
+  });
+})();
+
+// ─── EXPORT ───
+async function exportData(type, format) {
+  const btn = event.target.closest('.export-btn');
+  const origText = btn.innerHTML;
+  btn.innerHTML = 'Yukleniyor...';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch(`/admin/analitik/export?type=${type}&baslangic=${startDate}&bitis=${endDate}`);
+    const data = await resp.json();
+    if (!data.length) { alert('Disa aktarilacak veri yok.'); return; }
+
+    if (format === 'xlsx') {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, type);
+      // Sutun genislikleri
+      const cols = Object.keys(data[0]).map(k => ({wch: Math.max(k.length + 2, 14)}));
+      ws['!cols'] = cols;
+      XLSX.writeFile(wb, `flavora_${type}_${startDate}_${endDate}.xlsx`);
+    } else {
+      // CSV
+      const headers = Object.keys(data[0]);
+      const csv = [headers.join(','), ...data.map(row => headers.map(h => {
+        let v = row[h] ?? '';
+        if (typeof v === 'string' && (v.includes(',') || v.includes('"') || v.includes('\n'))) {
+          v = '"' + v.replace(/"/g, '""') + '"';
+        }
+        return v;
+      }).join(','))].join('\n');
+      const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `flavora_${type}_${startDate}_${endDate}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+    }
+  } catch(e) {
+    alert('Export hatasi: ' + e.message);
+  } finally {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

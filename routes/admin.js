@@ -428,6 +428,279 @@ router.get('/api/canli', (req, res) => {
   res.json(getStats());
 });
 
+// ═══════════════════════════════════════════════════════════════
+// DETAYLI ANALİTİK SAYFASI
+// ═══════════════════════════════════════════════════════════════
+router.get('/analitik', (req, res) => {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10);
+
+  const startDate = req.query.baslangic || thirtyDaysAgoStr;
+  const endDate = req.query.bitis || todayStr;
+
+  // 1) Genel KPI'lar
+  const kpi = db.prepare(`
+    SELECT
+      COUNT(*) as totalOrders,
+      COALESCE(SUM(total), 0) as totalRevenue,
+      COALESCE(AVG(total), 0) as avgOrder,
+      COUNT(DISTINCT guest_email) as uniqueCustomers
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled'
+  `).get(startDate, endDate);
+
+  // 2) Durum dagilimi
+  const statusBreakdown = db.prepare(`
+    SELECT status, COUNT(*) as count, COALESCE(SUM(total),0) as revenue
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ?
+    GROUP BY status
+    ORDER BY count DESC
+  `).all(startDate, endDate);
+
+  // 3) Gunluk trend
+  const dailyData = db.prepare(`
+    SELECT date(created_at) as date, COUNT(*) as orders, COALESCE(SUM(total),0) as revenue
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled'
+    GROUP BY date(created_at)
+    ORDER BY date
+  `).all(startDate, endDate);
+
+  // 4) Saat bazli siparis dagilimi (hangi saatte siparis geliyor)
+  const hourlyData = db.prepare(`
+    SELECT
+      CAST(strftime('%H', created_at) AS INTEGER) as hour,
+      COUNT(*) as orders,
+      COALESCE(SUM(total),0) as revenue
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled'
+    GROUP BY hour
+    ORDER BY hour
+  `).all(startDate, endDate);
+
+  // 5) Gun bazli siparis dagilimi (hangi gun siparis geliyor)
+  const weekdayData = db.prepare(`
+    SELECT
+      CASE CAST(strftime('%w', created_at) AS INTEGER)
+        WHEN 0 THEN 'Pazar'
+        WHEN 1 THEN 'Pazartesi'
+        WHEN 2 THEN 'Sali'
+        WHEN 3 THEN 'Carsamba'
+        WHEN 4 THEN 'Persembe'
+        WHEN 5 THEN 'Cuma'
+        WHEN 6 THEN 'Cumartesi'
+      END as dayName,
+      CAST(strftime('%w', created_at) AS INTEGER) as dayNum,
+      COUNT(*) as orders,
+      COALESCE(SUM(total),0) as revenue
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled'
+    GROUP BY dayNum
+    ORDER BY dayNum
+  `).all(startDate, endDate);
+
+  // 6) Sehir bazli siparis
+  const cityData = db.prepare(`
+    SELECT city, COUNT(*) as orders, COALESCE(SUM(total),0) as revenue,
+      COALESCE(AVG(total),0) as avgOrder
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled' AND city IS NOT NULL AND city != ''
+    GROUP BY city
+    ORDER BY orders DESC
+    LIMIT 20
+  `).all(startDate, endDate);
+
+  // 7) Odeme yontemi dagilimi
+  const paymentData = db.prepare(`
+    SELECT payment_method, COUNT(*) as orders, COALESCE(SUM(total),0) as revenue
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled'
+    GROUP BY payment_method
+  `).all(startDate, endDate);
+
+  // 8) Top 10 urunler
+  const topProducts = db.prepare(`
+    SELECT p.name, p.slug, p.image, p.price, p.sale_price,
+      SUM(oi.quantity) as sold,
+      SUM(oi.price * oi.quantity) as revenue,
+      COUNT(DISTINCT oi.order_id) as orderCount
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    JOIN orders o ON oi.order_id = o.id
+    WHERE date(o.created_at) BETWEEN ? AND ? AND o.status != 'cancelled'
+    GROUP BY p.id
+    ORDER BY sold DESC
+    LIMIT 15
+  `).all(startDate, endDate);
+
+  // 9) Kategori dagilimi
+  const categoryData = db.prepare(`
+    SELECT c.name, SUM(oi.quantity) as sold, SUM(oi.price * oi.quantity) as revenue
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    JOIN categories c ON p.category_id = c.id
+    JOIN orders o ON oi.order_id = o.id
+    WHERE date(o.created_at) BETWEEN ? AND ? AND o.status != 'cancelled'
+    GROUP BY c.id
+    ORDER BY revenue DESC
+  `).all(startDate, endDate);
+
+  // 10) Terk edilen sepet analizi
+  const abandonedStats = db.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN recovered = 1 THEN 1 ELSE 0 END) as recovered,
+      SUM(CASE WHEN email_sent = 1 AND recovered = 0 THEN 1 ELSE 0 END) as emailSentNotRecovered,
+      SUM(CASE WHEN email_sent = 0 AND recovered = 0 THEN 1 ELSE 0 END) as noAction,
+      COALESCE(SUM(cart_total), 0) as totalValue,
+      COALESCE(SUM(CASE WHEN recovered = 0 THEN cart_total ELSE 0 END), 0) as lostValue,
+      COALESCE(SUM(CASE WHEN recovered = 1 THEN cart_total ELSE 0 END), 0) as recoveredValue
+    FROM abandoned_cart_logs
+    WHERE date(created_at) BETWEEN ? AND ?
+  `).get(startDate, endDate);
+
+  // 11) Son terk edilen sepetler
+  const recentAbandoned = db.prepare(`
+    SELECT email, guest_name, cart_total, cart_data, email_sent, recovered, created_at
+    FROM abandoned_cart_logs
+    WHERE date(created_at) BETWEEN ? AND ?
+    ORDER BY created_at DESC
+    LIMIT 20
+  `).all(startDate, endDate);
+
+  // 12) Siparis degeri dagilimi (kac adet siparis hangi fiyat araliginda)
+  const orderValueBuckets = db.prepare(`
+    SELECT
+      CASE
+        WHEN total < 250 THEN '0-250'
+        WHEN total < 500 THEN '250-500'
+        WHEN total < 1000 THEN '500-1K'
+        WHEN total < 2000 THEN '1K-2K'
+        WHEN total < 5000 THEN '2K-5K'
+        ELSE '5K+'
+      END as bucket,
+      COUNT(*) as orders,
+      COALESCE(SUM(total),0) as revenue
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled'
+    GROUP BY bucket
+    ORDER BY MIN(total)
+  `).all(startDate, endDate);
+
+  // 13) Tekrar eden musteriler
+  const repeatCustomers = db.prepare(`
+    SELECT guest_email, COUNT(*) as orderCount, COALESCE(SUM(total),0) as totalSpent,
+      MIN(created_at) as firstOrder, MAX(created_at) as lastOrder
+    FROM orders
+    WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled' AND guest_email IS NOT NULL AND guest_email != ''
+    GROUP BY guest_email
+    HAVING orderCount > 1
+    ORDER BY totalSpent DESC
+    LIMIT 15
+  `).all(startDate, endDate);
+
+  // 14) Beden dagilimi (en cok hangi bedenler satiliyor)
+  const sizeData = db.prepare(`
+    SELECT oi.size, SUM(oi.quantity) as sold
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE date(o.created_at) BETWEEN ? AND ? AND o.status != 'cancelled'
+      AND oi.size IS NOT NULL AND oi.size != ''
+    GROUP BY oi.size
+    ORDER BY sold DESC
+  `).all(startDate, endDate);
+
+  // 15) Anlik tracker verileri
+  const liveStats = getStats();
+
+  // 16) Tum siparisler (export icin)
+  // Sadece sayisal ozet - tam data API ile cekilecek
+
+  res.render('admin/analytics', {
+    kpi, statusBreakdown, dailyData, hourlyData, weekdayData,
+    cityData, paymentData, topProducts, categoryData,
+    abandonedStats, recentAbandoned, orderValueBuckets,
+    repeatCustomers, sizeData, liveStats,
+    startDate, endDate,
+    layout: false
+  });
+});
+
+// Analitik CSV/JSON export
+router.get('/analitik/export', (req, res) => {
+  const startDate = req.query.baslangic || '2000-01-01';
+  const endDate = req.query.bitis || '2099-12-31';
+  const type = req.query.type || 'orders';
+
+  if (type === 'orders') {
+    const rows = db.prepare(`
+      SELECT o.id, o.guest_name as musteri, o.guest_email as email, o.guest_phone as telefon,
+        o.city as il, o.district as ilce, o.address as adres,
+        o.subtotal as araToplam, o.shipping as kargo, o.discount as indirim, o.total as toplam,
+        o.payment_method as odemeYontemi, o.status as durum, o.note as not, o.created_at as tarih
+      FROM orders o
+      WHERE date(o.created_at) BETWEEN ? AND ?
+      ORDER BY o.created_at DESC
+    `).all(startDate, endDate);
+    res.json(rows);
+  } else if (type === 'order_items') {
+    const rows = db.prepare(`
+      SELECT o.id as siparisId, oi.product_name as urun, oi.size as beden, oi.color as renk,
+        oi.price as fiyat, oi.quantity as adet, (oi.price * oi.quantity) as toplam,
+        o.guest_name as musteri, o.city as il, o.created_at as tarih
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      WHERE date(o.created_at) BETWEEN ? AND ?
+      ORDER BY o.created_at DESC
+    `).all(startDate, endDate);
+    res.json(rows);
+  } else if (type === 'abandoned') {
+    const rows = db.prepare(`
+      SELECT email, guest_name as musteri, cart_total as sepetTutari,
+        CASE WHEN email_sent=1 THEN 'Evet' ELSE 'Hayir' END as mailGonderildi,
+        CASE WHEN recovered=1 THEN 'Evet' ELSE 'Hayir' END as kurtarildi,
+        created_at as tarih
+      FROM abandoned_cart_logs
+      WHERE date(created_at) BETWEEN ? AND ?
+      ORDER BY created_at DESC
+    `).all(startDate, endDate);
+    res.json(rows);
+  } else if (type === 'products') {
+    const rows = db.prepare(`
+      SELECT p.name as urun, c.name as kategori, p.price as fiyat, p.sale_price as indirimliFiyat,
+        p.stock as stok, COALESCE(s.sold, 0) as satilan, COALESCE(s.revenue, 0) as gelir
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN (
+        SELECT oi.product_id, SUM(oi.quantity) as sold, SUM(oi.price * oi.quantity) as revenue
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE date(o.created_at) BETWEEN ? AND ? AND o.status != 'cancelled'
+        GROUP BY oi.product_id
+      ) s ON s.product_id = p.id
+      WHERE p.is_active = 1
+      ORDER BY COALESCE(s.sold, 0) DESC
+    `).all(startDate, endDate);
+    res.json(rows);
+  } else if (type === 'cities') {
+    const rows = db.prepare(`
+      SELECT city as il, COUNT(*) as siparisAdedi, COALESCE(SUM(total),0) as toplamGelir,
+        COALESCE(AVG(total),0) as ortSiparis
+      FROM orders
+      WHERE date(created_at) BETWEEN ? AND ? AND status != 'cancelled' AND city IS NOT NULL AND city != ''
+      GROUP BY city
+      ORDER BY siparisAdedi DESC
+    `).all(startDate, endDate);
+    res.json(rows);
+  } else {
+    res.json([]);
+  }
+});
+
 // Settings
 router.get('/ayarlar', (req, res) => {
   res.render('admin/settings', { layout: false });
