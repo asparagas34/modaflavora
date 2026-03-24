@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Hatirlatma - Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .wa-section { background:#fff; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .wa-section h3 { margin:0 0 18px; font-size:15px; font-weight:700; color:#111; padding-bottom:12px; border-bottom:1px solid #f3f4f6; display:flex;align-items:center;gap:8px; }
+    .wa-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600; }
+    .wa-badge.red { background:#fef2f2; color:#ef4444; }
+    .wa-badge.green { background:#f0fdf4; color:#22c55e; }
+    .wa-badge.orange { background:#fff7ed; color:#f97316; }
+    .wa-badge.gray { background:#f9fafb; color:#6b7280; }
+
+    .wa-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .wa-table th { text-align:left; padding:10px 12px; font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid #f3f4f6; }
+    .wa-table td { padding:10px 12px; border-bottom:1px solid #f9fafb; vertical-align:middle; }
+    .wa-table tr:hover { background:#fafafa; }
+
+    .wa-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; text-decoration:none; border:none; cursor:pointer; transition:all .15s; }
+    .wa-btn.green { background:#25d366; color:#fff; }
+    .wa-btn.green:hover { background:#1fba59; }
+    .wa-btn.gray { background:#f3f4f6; color:#374151; }
+    .wa-btn.gray:hover { background:#e5e7eb; }
+    .wa-btn.small { padding:5px 10px; font-size:11px; }
+
+    .wa-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+    .wa-stat { background:#fff; border-radius:12px; padding:18px; box-shadow:0 1px 4px rgba(0,0,0,.06); text-align:center; }
+    .wa-stat .num { font-size:28px; font-weight:700; color:#111; }
+    .wa-stat .label { font-size:11px; color:#6b7280; margin-top:4px; }
+
+    .wa-empty { text-align:center; padding:40px; color:#9ca3af; font-size:14px; }
+
+    .wa-msg-preview { max-width:320px; background:#dcf8c6; border-radius:8px; padding:10px 14px; font-size:12px; line-height:1.5; color:#111; position:relative; word-break:break-word; }
+    .wa-msg-preview::after { content:''; position:absolute; bottom:-6px; left:20px; width:12px; height:12px; background:#dcf8c6; transform:rotate(45deg); }
+
+    .log-status { display:inline-block; width:8px; height:8px; border-radius:50%; }
+    .log-status.sent { background:#22c55e; }
+    .log-status.failed { background:#ef4444; }
+
+    @media (max-width:768px) {
+      .wa-stats { grid-template-columns:repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+  <%- include('sidebar') %>
+  <main class="admin-main">
+    <div class="admin-header">
+      <h1>WhatsApp Hatirlatma</h1>
+      <a href="/admin/ayarlar#whatsapp-settings" class="wa-btn gray">Ayarlar</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="wa-stats">
+      <div class="wa-stat">
+        <div class="num" style="color:#ef4444"><%= paymentReminders.length %></div>
+        <div class="label">Odeme Bekleyen</div>
+      </div>
+      <div class="wa-stat">
+        <div class="num" style="color:#f97316"><%= cartReminders.length %></div>
+        <div class="label">Terk Edilen Sepet</div>
+      </div>
+      <div class="wa-stat">
+        <div class="num" style="color:#25d366"><%= recentLogs.filter(l => l.status === 'sent').length %></div>
+        <div class="label">Gonderilen (Son 50)</div>
+      </div>
+      <div class="wa-stat">
+        <div class="num" style="color:#3b82f6"><%= recentLogs.length %></div>
+        <div class="label">Toplam Kayit</div>
+      </div>
+    </div>
+
+    <!-- Odeme Bekleyen Siparisler -->
+    <div class="wa-section">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Odeme Bekleyen Siparisler
+        <% if (paymentReminders.length > 0) { %>
+          <span class="wa-badge red"><%= paymentReminders.length %> siparis</span>
+        <% } %>
+      </h3>
+
+      <% if (paymentReminders.length === 0) { %>
+        <div class="wa-empty">Odeme bekleyen siparis yok</div>
+      <% } else { %>
+        <table class="wa-table">
+          <thead>
+            <tr>
+              <th>Siparis</th>
+              <th>Musteri</th>
+              <th>Telefon</th>
+              <th>Tutar</th>
+              <th>Sure</th>
+              <th>Durum</th>
+              <th>Islem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% paymentReminders.forEach(order => { %>
+            <tr>
+              <td><strong>#<%= order.id %></strong></td>
+              <td><%= order.guest_name || '-' %></td>
+              <td><%= order.guest_phone %></td>
+              <td><strong><%= order.total?.toLocaleString('tr-TR') %> TL</strong></td>
+              <td>
+                <% if (order.hoursAgo >= 24) { %>
+                  <span class="wa-badge red"><%= Math.floor(order.hoursAgo / 24) %> gun</span>
+                <% } else if (order.hoursAgo >= 1) { %>
+                  <span class="wa-badge orange"><%= order.hoursAgo %> saat</span>
+                <% } else { %>
+                  <span class="wa-badge gray">< 1 saat</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (order.wa_sent_count > 0) { %>
+                  <span class="wa-badge green">Gonderildi (<%= order.wa_sent_count %>)</span>
+                <% } else { %>
+                  <span class="wa-badge red">Gonderilmedi</span>
+                <% } %>
+              </td>
+              <td>
+                <a href="<%= order.waLink %>" target="_blank" class="wa-btn green small"
+                   onclick="markSent('payment_reminder', <%= order.id %>, '<%= order.guest_phone %>')">
+                  WhatsApp Gonder
+                </a>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <!-- Terk Edilen Sepetler -->
+    <div class="wa-section">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+        Terk Edilen Sepetler
+        <% if (cartReminders.length > 0) { %>
+          <span class="wa-badge orange"><%= cartReminders.length %> sepet</span>
+        <% } %>
+      </h3>
+
+      <% if (cartReminders.length === 0) { %>
+        <div class="wa-empty">Hatirlatma bekleyen terk edilen sepet yok</div>
+      <% } else { %>
+        <table class="wa-table">
+          <thead>
+            <tr>
+              <th>Musteri</th>
+              <th>Telefon</th>
+              <th>Urunler</th>
+              <th>Tutar</th>
+              <th>Sure</th>
+              <th>Islem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% cartReminders.forEach(cart => { %>
+            <tr>
+              <td><%= cart.guest_name || '-' %></td>
+              <td><%= cart.phone %></td>
+              <td>
+                <% cart.cartItems.slice(0, 2).forEach(item => { %>
+                  <div style="font-size:12px;color:#374151"><%= item.name %> x<%= item.quantity %></div>
+                <% }); %>
+                <% if (cart.cartItems.length > 2) { %>
+                  <div style="font-size:11px;color:#9ca3af">+<%= cart.cartItems.length - 2 %> urun daha</div>
+                <% } %>
+              </td>
+              <td><strong><%= cart.cart_total?.toLocaleString('tr-TR') %> TL</strong></td>
+              <td>
+                <% if (cart.minutesAgo >= 1440) { %>
+                  <span class="wa-badge red"><%= Math.floor(cart.minutesAgo / 1440) %> gun</span>
+                <% } else if (cart.minutesAgo >= 60) { %>
+                  <span class="wa-badge orange"><%= Math.floor(cart.minutesAgo / 60) %> saat</span>
+                <% } else { %>
+                  <span class="wa-badge gray"><%= cart.minutesAgo %> dk</span>
+                <% } %>
+              </td>
+              <td>
+                <a href="<%= cart.waLink %>" target="_blank" class="wa-btn green small"
+                   onclick="markSent('abandoned_cart', <%= cart.id %>, '<%= cart.phone %>')">
+                  WhatsApp Gonder
+                </a>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <!-- Mesaj Onizleme -->
+    <div class="wa-section">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        Mesaj Sablonlari (Onizleme)
+      </h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <h4 style="font-size:13px;color:#374151;margin:0 0 10px;">Odeme Hatirlatma</h4>
+          <div class="wa-msg-preview"><%= settings.wa_payment_reminder_message || 'Merhaba {name}, #{order_id} numarali siparisiniz icin odeme bekleniyor. Toplam: {total} TL. IBAN: {iban}' %></div>
+          <p style="font-size:11px;color:#9ca3af;margin-top:8px;">Degiskenler: {name}, {order_id}, {total}, {iban}, {bank_name}, {bank_holder}</p>
+        </div>
+        <div>
+          <h4 style="font-size:13px;color:#374151;margin:0 0 10px;">Terk Edilen Sepet</h4>
+          <div class="wa-msg-preview"><%= settings.wa_abandoned_cart_message || 'Merhaba {name}, sepetinizde {count} urun kaldi. Siparisinizi tamamlayin: {site_url}' %></div>
+          <p style="font-size:11px;color:#9ca3af;margin-top:8px;">Degiskenler: {name}, {count}, {total}, {site_url}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Son Gonderimler -->
+    <div class="wa-section">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Son Gonderimler
+      </h3>
+
+      <% if (recentLogs.length === 0) { %>
+        <div class="wa-empty">Henuz gonderim yok</div>
+      <% } else { %>
+        <table class="wa-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Telefon</th>
+              <th>Tip</th>
+              <th>Siparis</th>
+              <th>Tarih</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% recentLogs.forEach(log => { %>
+            <tr>
+              <td><span class="log-status <%= log.status %>"></span></td>
+              <td><%= log.phone %></td>
+              <td>
+                <% if (log.message_type === 'payment_reminder') { %>
+                  <span class="wa-badge orange">Odeme</span>
+                <% } else if (log.message_type === 'abandoned_cart') { %>
+                  <span class="wa-badge gray">Sepet</span>
+                <% } else { %>
+                  <span class="wa-badge green">Manuel</span>
+                <% } %>
+              </td>
+              <td><%= log.order_id ? '#' + log.order_id : '-' %></td>
+              <td style="font-size:12px;color:#6b7280;"><%= log.sent_at || log.created_at %></td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+  </main>
+
+  <script>
+  function markSent(type, id, phone) {
+    fetch('/admin/whatsapp/gonderildi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, id, phone })
+    }).catch(() => {});
+  }
+  </script>
+</body>
+</html>

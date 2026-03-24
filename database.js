@@ -157,6 +157,20 @@ function initDatabase() {
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
       UNIQUE(user_id, product_id)
     );
+
+    CREATE TABLE IF NOT EXISTS whatsapp_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      message_type TEXT NOT NULL,
+      order_id INTEGER,
+      template TEXT,
+      status TEXT DEFAULT 'pending',
+      error TEXT,
+      sent_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_wa_logs_phone ON whatsapp_logs(phone);
+    CREATE INDEX IF NOT EXISTS idx_wa_logs_type ON whatsapp_logs(message_type);
   `);
 
   // Default settings
@@ -196,7 +210,18 @@ function initDatabase() {
     abandoned_cart_delay: '30',
     abandoned_cart_subject: 'Sepetinizde ürünler sizi bekliyor!',
     order_confirmation_enabled: '0',
-    shipping_notification_enabled: '0'
+    shipping_notification_enabled: '0',
+    // WhatsApp ayarlari
+    wa_enabled: '0',
+    wa_api_url: 'https://graph.facebook.com/v21.0',
+    wa_phone_id: '',
+    wa_token: '',
+    wa_payment_reminder_enabled: '0',
+    wa_payment_reminder_delay: '60',
+    wa_payment_reminder_message: 'Merhaba {name}, #{order_id} numarali siparisiniz icin odeme bekleniyor. Toplam: {total} TL. Havale/EFT ile odemenizi yaparak siparisinizi onaylayabilirsiniz. IBAN: {iban}',
+    wa_abandoned_cart_enabled: '0',
+    wa_abandoned_cart_delay: '30',
+    wa_abandoned_cart_message: 'Merhaba {name}, sepetinizde {count} urun kaldi. Siparisinizi tamamlamayi unutmayin! {site_url}'
   };
 
   const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');

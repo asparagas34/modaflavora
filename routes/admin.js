@@ -3,6 +3,7 @@ const router = express.Router();
 const { initBot } = require('../telegram');
 const { resetTransporter, sendMail } = require('../mailer');
 const { startAbandonedCartChecker, stopAbandonedCartChecker } = require('../abandoned-cart');
+const { getDashboardData, markAsSent, initWhatsApp, stopWhatsApp } = require('../whatsapp');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -789,6 +790,21 @@ router.get('/analitik/export', (req, res) => {
 });
 
 // Settings
+// ============ WHATSAPP ============
+
+router.get('/whatsapp', (req, res) => {
+  const waData = getDashboardData();
+  res.render('admin/whatsapp', { layout: false, ...waData });
+});
+
+router.post('/whatsapp/gonderildi', (req, res) => {
+  const { type, id, phone } = req.body;
+  markAsSent(type, parseInt(id) || 0, phone);
+  res.json({ ok: true });
+});
+
+// ============ AYARLAR ============
+
 router.get('/ayarlar', (req, res) => {
   res.render('admin/settings', { layout: false });
 });
@@ -803,14 +819,17 @@ router.post('/ayarlar', (req, res) => {
     'meta_capi_token', 'meta_capi_test_code',
     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_name', 'smtp_from_email', 'smtp_secure',
     'abandoned_cart_delay', 'abandoned_cart_subject',
-    'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled'];
+    'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled',
+    'wa_enabled', 'wa_payment_reminder_enabled', 'wa_payment_reminder_delay', 'wa_payment_reminder_message',
+    'wa_abandoned_cart_enabled', 'wa_abandoned_cart_delay', 'wa_abandoned_cart_message'];
   const update = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   for (const key of fields) {
     if (req.body[key] !== undefined) update.run(key, req.body[key]);
   }
   // Checkbox'lar gönderilmezse 0 kaydet
   const checkboxFields = ['meta_pixel_active', 'google_analytics_active', 'cod_enabled',
-    'smtp_secure', 'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled'];
+    'smtp_secure', 'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled',
+    'wa_enabled', 'wa_payment_reminder_enabled', 'wa_abandoned_cart_enabled'];
   for (const key of checkboxFields) {
     if (req.body[key] === undefined) update.run(key, '0');
   }
@@ -824,6 +843,11 @@ router.post('/ayarlar', (req, res) => {
   try {
     if (req.body.abandoned_cart_enabled === '1') startAbandonedCartChecker();
     else stopAbandonedCartChecker();
+  } catch (e) {}
+  // WhatsApp otomasyonunu güncelle
+  try {
+    if (req.body.wa_enabled === '1') initWhatsApp();
+    else stopWhatsApp();
   } catch (e) {}
   res.redirect('/admin/ayarlar');
 });

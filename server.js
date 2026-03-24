@@ -6,6 +6,7 @@ const { initDatabase, getSettings, db } = require('./database');
 const { initBot } = require('./telegram');
 const { trackRequest } = require('./tracker');
 const { startAbandonedCartChecker } = require('./abandoned-cart');
+const { initWhatsApp } = require('./whatsapp');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,9 @@ initBot();
 
 // Terk edilen sepet otomasyonunu başlat
 startAbandonedCartChecker();
+
+// WhatsApp hatırlatma sistemini başlat
+initWhatsApp();
 
 // View engine
 app.set('view engine', 'ejs');
