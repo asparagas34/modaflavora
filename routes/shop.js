@@ -203,12 +203,7 @@ router.get('/siparis', (req, res) => {
   }
   trackEvent('checkout', 0, req);
   try { capi.trackInitiateCheckout(req, req.session.cart); } catch (e) {}
-  let districtsJSON = '{}';
-  try {
-    const districts = require('../districts-data');
-    districtsJSON = JSON.stringify(districts);
-  } catch (e) { console.error('[Districts]', e.message); }
-  res.render('checkout', { districtsJSON });
+  res.render('checkout');
 });
 router.get('/odeme', (req, res) => res.redirect('/siparis'));
 
