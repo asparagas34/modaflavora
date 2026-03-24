@@ -1671,8 +1671,8 @@ body { overflow-x: clip; max-width: 100vw; }
   }
   .gallery-thumbs::-webkit-scrollbar { display: none; }
   .gallery-thumb { width: 56px; height: 68px; flex-shrink: 0; }
-  .gallery-main { width: 100%; overflow: visible; border-radius: 8px; }
-  .gallery-main img { width: 100%; height: auto; display: block; }
+  .gallery-main { width: 100%; overflow: visible; border-radius: 8px; flex: none; align-self: auto; }
+  .gallery-main img { width: 100%; height: auto; display: block; max-height: none; object-fit: unset; }
 
   /* Features bar - mobilte dikey */
   .product-features {
@@ -1690,7 +1690,7 @@ body { overflow-x: clip; max-width: 100vw; }
   .product-shipping-info { min-width: 0; overflow: hidden; }
 }
 @media (max-width: 480px) {
-  .gallery-main img { width: 100%; height: auto; }
+  .gallery-main img { width: 100%; height: auto; max-height: none; object-fit: unset; }
   .gallery-thumb { width: 48px; height: 58px; }
 }
 
