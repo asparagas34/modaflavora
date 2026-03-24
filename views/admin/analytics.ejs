@@ -231,8 +231,158 @@
             </div>
           </div>
         </div>
-        <p style="font-size:11px;color:#9ca3af;margin:8px 0 0;">Hunisi verileri sunucu yeniden basladiginda sifirlanir (in-memory). Kalici veri icin asagidaki grafiklere bakin.</p>
+        <p style="font-size:11px;color:#9ca3af;margin:8px 0 0;">Canli huni sunucu restart'inda sifirlanir. Kalici veri asagida.</p>
       </div>
+
+      <!-- ═══ KALICI DONUSUM HUNİSİ (DB) ═══ -->
+      <div class="a-card mb-20">
+        <h3>Kalici Donusum Hunisi <span class="badge">DB</span></h3>
+        <%
+          const pf = persistentFunnel;
+          const pfCartRate = pf.sessions > 0 ? (pf.cartAdds / pf.sessions * 100).toFixed(1) : 0;
+          const pfCheckoutRate = pf.cartAdds > 0 ? (pf.checkoutStarts / pf.cartAdds * 100).toFixed(1) : 0;
+          const pfOrderRate = pf.checkoutStarts > 0 ? (pf.orderCompletes / pf.checkoutStarts * 100).toFixed(1) : 0;
+          const pfOverallRate = pf.sessions > 0 ? (pf.orderCompletes / pf.sessions * 100).toFixed(2) : 0;
+        %>
+        <div class="funnel">
+          <div class="funnel-step">
+            <div class="funnel-val"><%= pf.sessions %></div>
+            <div class="funnel-label">Ziyaretci (Session)</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-val"><%= pf.productViews %></div>
+            <div class="funnel-label">Urun Sayfasi</div>
+            <div class="funnel-rate"><%= pf.sessions > 0 ? (pf.productViews/pf.sessions*100).toFixed(1) : 0 %>%</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-val"><%= pf.cartAdds %></div>
+            <div class="funnel-label">Sepete Ekledi</div>
+            <div class="funnel-rate <%= pfCartRate < 5 ? 'bad' : '' %>"><%= pfCartRate %>%</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-val"><%= pf.checkoutStarts %></div>
+            <div class="funnel-label">Checkout'a Gecti</div>
+            <div class="funnel-rate <%= pfCheckoutRate < 30 ? 'bad' : '' %>"><%= pfCheckoutRate %>%</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-val"><%= pf.orderCompletes %></div>
+            <div class="funnel-label">Siparis Verdi</div>
+            <div class="funnel-rate <%= pfOrderRate < 40 ? 'bad' : '' %>"><%= pfOrderRate %>%</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:12px;color:#374151;">
+          <strong>Genel Donusum Orani:</strong> %<%= pfOverallRate %>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <strong>En Buyuk Kayip:</strong>
+          <% if (pf.sessions > 0 && pf.productViews > 0 && pf.cartAdds > 0) {
+            const drop1 = pf.sessions - pf.productViews;
+            const drop2 = pf.productViews - pf.cartAdds;
+            const drop3 = pf.cartAdds - pf.checkoutStarts;
+            const drop4 = pf.checkoutStarts - pf.orderCompletes;
+            const maxDrop = Math.max(drop1, drop2, drop3, drop4);
+            if (maxDrop === drop1) { %>Anasayfa/Liste → Urun Sayfasi (<%= drop1 %> kisi)<%
+            } else if (maxDrop === drop2) { %>Urun Sayfasi → Sepete Ekleme (<%= drop2 %> kisi)<%
+            } else if (maxDrop === drop3) { %>Sepete Ekleme → Checkout (<%= drop3 %> kisi)<%
+            } else { %>Checkout → Siparis (<%= drop4 %> kisi)<%
+            }
+          } else { %>Henuz yeterli veri yok<% } %>
+        </div>
+
+        <!-- Cihaz bazli funnel -->
+        <% if (deviceFunnel.length > 0) { %>
+        <h3 style="font-size:13px;margin:18px 0 10px;">Cihaz Bazli Donusum</h3>
+        <table class="a-table">
+          <thead><tr><th>Cihaz</th><th>Ziyaret</th><th>Urun Gor.</th><th>Sepet Ekle</th><th>Checkout</th><th>Siparis</th><th>Donusum</th></tr></thead>
+          <tbody>
+            <% deviceFunnel.forEach(d => { %>
+            <tr>
+              <td style="font-weight:600;"><%= d.device === 'mobile' ? 'Mobil' : d.device === 'desktop' ? 'Masaustu' : 'Tablet' %></td>
+              <td><%= d.sessions %></td>
+              <td><%= d.productViews %></td>
+              <td><%= d.cartAdds %></td>
+              <td><%= d.checkoutStarts %></td>
+              <td style="font-weight:700;color:#22c55e;"><%= d.orderCompletes %></td>
+              <td style="font-weight:700;color:<%= d.sessions>0 && (d.orderCompletes/d.sessions*100) < 1 ? '#ef4444' : '#22c55e' %>;">
+                %<%= d.sessions > 0 ? (d.orderCompletes/d.sessions*100).toFixed(2) : 0 %>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+
+      <!-- ═══ TERK EDİLEN SAYFA ANALİZİ ═══ -->
+      <% if (topDropoffPages.length > 0) { %>
+      <div class="a-card mb-20">
+        <h3>Kullanicilarin Terk Ettigi Son Sayfalar <span class="badge">Siparis Vermeyenler</span></h3>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px;">Kullanicilarin en son gordugu sayfa (sepete eklemeden veya siparis vermeden cikmadan once)</p>
+        <table class="a-table">
+          <thead><tr><th>Sayfa</th><th>Terk Eden Kisi</th><th></th></tr></thead>
+          <tbody>
+            <% const maxDropoff = topDropoffPages[0]?.count || 1; %>
+            <% topDropoffPages.forEach(d => { %>
+            <tr>
+              <td style="font-weight:500;color:#111;"><%= d.last_label || d.last_page %></td>
+              <td style="font-weight:700;color:#ef4444;"><%= d.count %></td>
+              <td><div class="bar" style="min-width:100px;"><div class="bar-fill" style="width:<%= (d.count/maxDropoff*100).toFixed(0) %>%;background:#ef4444;"></div></div></td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+
+      <!-- ═══ KULLANICI YOLCULUKLARI ═══ -->
+      <% if (userJourneys.length > 0) { %>
+      <div class="a-card mb-20">
+        <h3>Son Kullanici Yolculuklari <span class="badge">Son 30</span></h3>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px;">Her ziyaretcinin sitedeki adim adim yolculugu</p>
+        <div style="max-height:440px;overflow-y:auto;">
+          <table class="a-table">
+            <thead><tr><th>Cihaz</th><th>Adim</th><th>Yolculuk</th><th>Sepet</th><th>Sonuc</th><th>Tarih</th></tr></thead>
+            <tbody>
+              <% userJourneys.forEach(j => {
+                const steps = j.journey.split(' > ');
+                const uniqueSteps = [...new Set(steps)];
+                const stepLabels = {
+                  'page_home': 'Anasayfa', 'page_products': 'Urunler', 'page_product': 'Urun',
+                  'page_cart': 'Sepet', 'page_checkout': 'Checkout', 'checkout': 'Checkout',
+                  'cart_add': 'Sepet+', 'page_order_complete': 'Siparis', 'order': 'Siparis',
+                  'page_favorites': 'Favoriler', 'page_other': 'Diger'
+                };
+                const shortJourney = uniqueSteps.slice(0, 8).map(s => stepLabels[s] || s).join(' → ');
+              %>
+              <tr>
+                <td><%= j.device === 'mobile' ? 'Mobil' : j.device === 'desktop' ? 'PC' : 'Tablet' %></td>
+                <td><%= j.page_count %></td>
+                <td style="font-size:11px;color:#374151;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= shortJourney %>"><%= shortJourney %></td>
+                <td style="font-size:12px;color:#6b7280;"><%= j.max_cart_total > 0 ? Number(j.max_cart_total).toLocaleString('tr-TR',{maximumFractionDigits:0})+' TL' : '-' %></td>
+                <td>
+                  <% if (j.converted) { %>
+                    <span style="color:#22c55e;font-weight:700;">Siparis Verdi</span>
+                  <% } else { %>
+                    <span style="color:#ef4444;font-weight:600;">Terk Etti</span>
+                  <% } %>
+                </td>
+                <td style="font-size:11px;color:#9ca3af;white-space:nowrap;"><%= new Date(j.first_seen).toLocaleString('tr-TR') %></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- ═══ GUNLUK DONUSUM TREND GRAFİĞİ ═══ -->
+      <% if (dailyFunnel.length > 0) { %>
+      <div class="a-card mb-20">
+        <h3>Gunluk Donusum Trendi (Kalici)</h3>
+        <div style="position:relative;height:280px;">
+          <canvas id="dailyFunnelChart"></canvas>
+        </div>
+      </div>
+      <% } %>
 
       <!-- ═══ GUNLUK TREND GRAFİĞİ ═══ -->
       <div class="a-card mb-20">
@@ -523,6 +673,35 @@ const COLORS = ['#3b82f6','#22c55e','#f97316','#a855f7','#14b8a6','#ef4444','#ea
         y:{position:'left',grid:{color:'#f3f4f6'},ticks:{font:{size:11},callback:v=>v.toLocaleString('tr-TR')+'TL'}},
         y1:{position:'right',grid:{display:false},ticks:{font:{size:11}},beginAtZero:true},
         x:{grid:{display:false},ticks:{font:{size:10}}}
+      }
+    }
+  });
+})();
+
+// Daily Funnel (persistent)
+(function(){
+  const data = <%- JSON.stringify(dailyFunnel) %>;
+  const ctx = document.getElementById('dailyFunnelChart');
+  if(!ctx || !data.length) return;
+  new Chart(ctx.getContext('2d'), {
+    type:'line',
+    data:{
+      labels: data.map(d => { const dt=new Date(d.date+'T00:00:00'); return dt.toLocaleDateString('tr-TR',{day:'2-digit',month:'short'}); }),
+      datasets:[
+        { label:'Ziyaret', data:data.map(d=>d.sessions), borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,.1)', fill:true, borderWidth:2, tension:.3, pointRadius:2 },
+        { label:'Urun Goruntuleme', data:data.map(d=>d.productViews), borderColor:'#3b82f6', borderWidth:2, tension:.3, pointRadius:2 },
+        { label:'Sepete Ekleme', data:data.map(d=>d.cartAdds), borderColor:'#f97316', borderWidth:2, tension:.3, pointRadius:2 },
+        { label:'Checkout', data:data.map(d=>d.checkouts), borderColor:'#a855f7', borderWidth:2, tension:.3, pointRadius:2 },
+        { label:'Siparis', data:data.map(d=>d.orders), borderColor:'#22c55e', borderWidth:3, tension:.3, pointRadius:3, pointBackgroundColor:'#22c55e' }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11},usePointStyle:true,padding:10}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#f3f4f6'},beginAtZero:true,ticks:{font:{size:10}}}
       }
     }
   });

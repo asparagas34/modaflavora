@@ -201,7 +201,7 @@ router.get('/siparis', (req, res) => {
   if (!req.session.cart || req.session.cart.length === 0) {
     return res.redirect('/sepet');
   }
-  trackEvent('checkout');
+  trackEvent('checkout', 0, req);
   try { capi.trackInitiateCheckout(req, req.session.cart); } catch (e) {}
   res.render('checkout');
 });
@@ -250,7 +250,7 @@ router.post('/siparis', (req, res) => {
   }
 
   // Event tracking, CAPI & Telegram bildirim
-  trackEvent('order', total);
+  trackEvent('order', total, req);
   try {
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
     const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);

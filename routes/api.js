@@ -35,7 +35,7 @@ router.post('/cart/add', (req, res) => {
   const cartCount = req.session.cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = req.session.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  trackEvent('cart_add');
+  trackEvent('cart_add', 0, req);
   try { capi.trackAddToCart(req, product); } catch (e) {}
   const itemPrice = product.sale_price || product.price;
   res.json({

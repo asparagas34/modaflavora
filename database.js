@@ -132,6 +132,22 @@ function initDatabase() {
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS site_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      page TEXT,
+      page_label TEXT,
+      device TEXT DEFAULT 'desktop',
+      referrer TEXT,
+      cart_total REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_site_events_session ON site_events(session_id);
+    CREATE INDEX IF NOT EXISTS idx_site_events_type ON site_events(event_type);
+    CREATE INDEX IF NOT EXISTS idx_site_events_date ON site_events(created_at);
+
     CREATE TABLE IF NOT EXISTS favorites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

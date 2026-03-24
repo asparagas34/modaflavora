@@ -617,14 +617,101 @@ router.get('/analitik', (req, res) => {
   // 15) Anlik tracker verileri
   const liveStats = getStats();
 
-  // 16) Tum siparisler (export icin)
-  // Sadece sayisal ozet - tam data API ile cekilecek
+  // 16) KALICI DONUSUM HUNİSİ (site_events tablosundan)
+  let persistentFunnel = { sessions: 0, productViews: 0, cartAdds: 0, cartViews: 0, checkoutStarts: 0, orderCompletes: 0 };
+  let deviceFunnel = [];
+  let topDropoffPages = [];
+  let userJourneys = [];
+  let dailyFunnel = [];
+
+  try {
+    // Toplam benzersiz session ve adim bazli sayilar
+    persistentFunnel = db.prepare(`
+      SELECT
+        COUNT(DISTINCT session_id) as sessions,
+        COUNT(DISTINCT CASE WHEN event_type = 'page_product' THEN session_id END) as productViews,
+        COUNT(DISTINCT CASE WHEN event_type = 'cart_add' THEN session_id END) as cartAdds,
+        COUNT(DISTINCT CASE WHEN event_type = 'page_cart' THEN session_id END) as cartViews,
+        COUNT(DISTINCT CASE WHEN event_type IN ('page_checkout','checkout') THEN session_id END) as checkoutStarts,
+        COUNT(DISTINCT CASE WHEN event_type IN ('page_order_complete','order') THEN session_id END) as orderCompletes
+      FROM site_events
+      WHERE date(created_at) BETWEEN ? AND ?
+    `).get(startDate, endDate) || persistentFunnel;
+
+    // Cihaz bazli funnel
+    deviceFunnel = db.prepare(`
+      SELECT
+        device,
+        COUNT(DISTINCT session_id) as sessions,
+        COUNT(DISTINCT CASE WHEN event_type = 'page_product' THEN session_id END) as productViews,
+        COUNT(DISTINCT CASE WHEN event_type = 'cart_add' THEN session_id END) as cartAdds,
+        COUNT(DISTINCT CASE WHEN event_type IN ('page_checkout','checkout') THEN session_id END) as checkoutStarts,
+        COUNT(DISTINCT CASE WHEN event_type IN ('page_order_complete','order') THEN session_id END) as orderCompletes
+      FROM site_events
+      WHERE date(created_at) BETWEEN ? AND ?
+      GROUP BY device
+      ORDER BY sessions DESC
+    `).all(startDate, endDate);
+
+    // Kullanicilarin en son gordugu sayfa (terk ettigi yer) - siparis vermeyenler
+    topDropoffPages = db.prepare(`
+      SELECT last_page, last_label, COUNT(*) as count
+      FROM (
+        SELECT session_id,
+          (SELECT page FROM site_events e2 WHERE e2.session_id = e1.session_id AND date(e2.created_at) BETWEEN ? AND ? ORDER BY e2.created_at DESC LIMIT 1) as last_page,
+          (SELECT page_label FROM site_events e2 WHERE e2.session_id = e1.session_id AND date(e2.created_at) BETWEEN ? AND ? ORDER BY e2.created_at DESC LIMIT 1) as last_label
+        FROM site_events e1
+        WHERE date(e1.created_at) BETWEEN ? AND ?
+        GROUP BY session_id
+        HAVING SUM(CASE WHEN event_type IN ('page_order_complete','order') THEN 1 ELSE 0 END) = 0
+      )
+      GROUP BY last_page
+      ORDER BY count DESC
+      LIMIT 10
+    `).all(startDate, endDate, startDate, endDate, startDate, endDate);
+
+    // Son 20 kullanici yolculugu (session bazli ozet)
+    userJourneys = db.prepare(`
+      SELECT
+        session_id,
+        MIN(created_at) as first_seen,
+        MAX(created_at) as last_seen,
+        COUNT(*) as page_count,
+        device,
+        GROUP_CONCAT(event_type, ' > ') as journey,
+        MAX(CASE WHEN event_type IN ('page_order_complete','order') THEN 1 ELSE 0 END) as converted,
+        MAX(cart_total) as max_cart_total
+      FROM site_events
+      WHERE date(created_at) BETWEEN ? AND ?
+      GROUP BY session_id
+      ORDER BY first_seen DESC
+      LIMIT 30
+    `).all(startDate, endDate);
+
+    // Gunluk funnel trend
+    dailyFunnel = db.prepare(`
+      SELECT
+        date(created_at) as date,
+        COUNT(DISTINCT session_id) as sessions,
+        COUNT(DISTINCT CASE WHEN event_type = 'page_product' THEN session_id END) as productViews,
+        COUNT(DISTINCT CASE WHEN event_type = 'cart_add' THEN session_id END) as cartAdds,
+        COUNT(DISTINCT CASE WHEN event_type IN ('page_checkout','checkout') THEN session_id END) as checkouts,
+        COUNT(DISTINCT CASE WHEN event_type IN ('page_order_complete','order') THEN session_id END) as orders
+      FROM site_events
+      WHERE date(created_at) BETWEEN ? AND ?
+      GROUP BY date(created_at)
+      ORDER BY date
+    `).all(startDate, endDate);
+  } catch (e) {
+    // site_events tablosu henuz olusmadiginda hata vermesin
+  }
 
   res.render('admin/analytics', {
     kpi, statusBreakdown, dailyData, hourlyData, weekdayData,
     cityData, paymentData, topProducts, categoryData,
     abandonedStats, recentAbandoned, orderValueBuckets,
     repeatCustomers, sizeData, liveStats,
+    persistentFunnel, deviceFunnel, topDropoffPages, userJourneys, dailyFunnel,
     startDate, endDate,
     layout: false
   });
