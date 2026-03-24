@@ -208,18 +208,11 @@
           </div>
           <% } %>
 
-          <% if (settings.bank_name) { %>
-          <div class="os-bank-row">
-            <span class="lbl">Banka</span>
-            <span class="val"><%= settings.bank_name %></span>
-          </div>
-          <% } %>
-
           <% if (settings.bank_iban) { %>
           <div class="os-bank-row">
             <span class="lbl">IBAN</span>
             <span class="val">
-              <span id="ibanVal" style="font-family:monospace;font-size:13px;letter-spacing:.3px;"><%= settings.bank_iban %></span>
+              <span id="ibanVal" style="font-family:monospace;font-size:11px;letter-spacing:.2px;word-break:break-all;"><%= settings.bank_iban %></span>
               <button class="os-copy" onclick="copyEl('ibanVal',this)">Kopyala</button>
             </span>
           </div>
