@@ -211,6 +211,7 @@ function initDatabase() {
     abandoned_cart_subject: 'Sepetinizde ürünler sizi bekliyor!',
     order_confirmation_enabled: '0',
     shipping_notification_enabled: '0',
+    reviews_enabled: '0',
     // WhatsApp ayarlari
     wa_enabled: '0',
     wa_api_url: 'https://graph.facebook.com/v21.0',

@@ -182,6 +182,7 @@ router.get('/urun/:slug', (req, res) => {
 
   res.render('product-detail', {
     product, relatedProducts, isFavorited, colorVariants, reviews, reviewStats,
+    settings: getSettings(),
     seoTitle,
     seoDescription: seoDesc,
     seoCanonical: baseUrl + '/urun/' + product.slug,
