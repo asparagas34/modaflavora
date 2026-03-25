@@ -695,7 +695,7 @@ input, select, textarea { font-family: var(--font); font-size: 16px; }
 .quantity-selector.small button { width: 30px; height: 30px; font-size: 14px; }
 .quantity-selector.small span { padding: 0 12px; font-weight: 600; }
 
-.product-actions { display: flex; gap: 10px; margin-bottom: 20px; }
+.product-actions { display: flex; gap: 10px; margin-bottom: 12px; }
 
 .btn-outline-icon {
   width: 52px;
@@ -946,7 +946,7 @@ input, select, textarea { font-family: var(--font); font-size: 16px; }
 .btn-lg { padding: 16px 40px; font-size: 14px; }
 .btn-block { width: 100%; margin-top: 10px; }
 
-.add-to-cart-btn { flex: 1; }
+.add-to-cart-btn { flex: 1; width: 100%; }
 
 /* ===== AUTH ===== */
 .auth-form {
