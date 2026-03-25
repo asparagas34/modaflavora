@@ -100,14 +100,36 @@
   </section>
   <% } %>
 
-  <!-- Editorial Banner 1 - Siyah Blok -->
-  <section class="editorial-banner editorial-dark">
-    <div class="editorial-banner-inner">
-      <div class="editorial-banner-text">
-        <small>YENİ KOLEKSİYON</small>
-        <h2>Sezonun En<br>Trend Parçaları</h2>
-        <p>Şıklığı ve zarafeti bir arada sunan özel tasarımlar.</p>
-        <a href="/urunler?siralama=yeni" class="btn btn-white">KEŞFET</a>
+  <!-- CSS Banner - Yeni Koleksiyon -->
+  <section class="css-banner-collection">
+    <div class="css-banner-bg">
+      <div class="css-banner-shapes">
+        <div class="cbs-circle cbs-c1"></div>
+        <div class="cbs-circle cbs-c2"></div>
+        <div class="cbs-circle cbs-c3"></div>
+        <div class="cbs-line cbs-l1"></div>
+        <div class="cbs-line cbs-l2"></div>
+      </div>
+      <div class="css-banner-content">
+        <div class="css-banner-left">
+          <span class="css-banner-label">2025 İLKBAHAR / YAZ</span>
+          <h2 class="css-banner-title">Yeni<br>Koleksiyon<br><em>Geldi</em></h2>
+          <a href="/urunler?siralama=yeni" class="btn btn-white">KOLEKS<span style="letter-spacing:0">İ</span>YONU KEŞFET</a>
+        </div>
+        <div class="css-banner-right">
+          <div class="css-banner-card css-bc-1">
+            <div class="css-bc-label">YENİ</div>
+            <div class="css-bc-text">Elbise</div>
+          </div>
+          <div class="css-banner-card css-bc-2">
+            <div class="css-bc-label">TREND</div>
+            <div class="css-bc-text">Takım</div>
+          </div>
+          <div class="css-banner-card css-bc-3">
+            <div class="css-bc-label">İNDİRİM</div>
+            <div class="css-bc-text">Jean</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -123,6 +145,29 @@
       <div class="products-grid">
         <% featuredProducts.forEach(product => { %>
           <%- include('partials/product-card', { product }) %>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- Çok Satanlar -->
+  <% if (bestSellers && bestSellers.length > 0) { %>
+  <section class="section bestsellers-section">
+    <div class="container">
+      <div class="section-header-line">
+        <div>
+          <h2 class="section-title" style="margin-bottom:4px;">ÇOK SATANLAR</h2>
+          <p style="font-size:12px;color:#999;letter-spacing:1px;">EN ÇOOK TERCİH EDİLENLER</p>
+        </div>
+        <a href="/urunler" class="section-see-all">Tümünü Gör →</a>
+      </div>
+      <div class="products-grid">
+        <% bestSellers.forEach((product, i) => { %>
+          <div style="position:relative;">
+            <div class="bestseller-rank">#<%= i + 1 %></div>
+            <%- include('partials/product-card', { product }) %>
+          </div>
         <% }); %>
       </div>
     </div>

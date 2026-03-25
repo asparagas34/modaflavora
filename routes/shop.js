@@ -25,6 +25,17 @@ router.get('/', (req, res) => {
     'SELECT * FROM products WHERE is_active = 1 AND sale_price IS NOT NULL AND sale_price > 0 ORDER BY created_at DESC LIMIT 8'
   ).all();
 
+  // Çok satanlar: sipariş sayısına göre sıralı
+  const bestSellers = db.prepare(`
+    SELECT p.*, COALESCE(SUM(oi.quantity), 0) as total_sold
+    FROM products p
+    LEFT JOIN order_items oi ON oi.product_id = p.id
+    WHERE p.is_active = 1
+    GROUP BY p.id
+    ORDER BY total_sold DESC, p.created_at DESC
+    LIMIT 8
+  `).all();
+
   const sliders = db.prepare(
     'SELECT * FROM sliders WHERE is_active = 1 ORDER BY sort_order'
   ).all();
@@ -36,7 +47,7 @@ router.get('/', (req, res) => {
   const settings = getSettings();
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   res.render('index', {
-    categories, allCategories, newProducts, featuredProducts, saleProducts, sliders,
+    categories, allCategories, newProducts, featuredProducts, saleProducts, bestSellers, sliders,
     seoTitle: `${settings.site_name} | ${settings.site_description}`,
     seoDescription: `${settings.site_name} - Online kadın giyim mağazası. Elbise, bluz, etek, pantolon ve daha fazlası uygun fiyatlarla. ${settings.free_shipping_limit}₺ üzeri ücretsiz kargo.`,
     seoCanonical: baseUrl + '/',
