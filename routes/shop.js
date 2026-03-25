@@ -261,13 +261,17 @@ router.post('/siparis', (req, res) => {
     insertItem.run(orderId, item.productId, item.name, item.image, item.price, item.quantity, item.size, item.color);
   }
 
-  // Event tracking, CAPI & Telegram bildirim
+  // Event tracking & Telegram bildirim
   trackEvent('order', total, req);
-  try {
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-    const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);
-    capi.trackPurchase(req, order, orderItems);
-  } catch (e) {}
+  // CAPI Purchase event: sadece kapida odeme ise hemen tetikle
+  // EFT/havale icin admin onayladiginda tetiklenecek
+  if (pm === 'cod') {
+    try {
+      const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+      const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);
+      capi.trackPurchase(req, order, orderItems);
+    } catch (e) {}
+  }
   try { sendOrderNotification(orderId); } catch (e) { console.error('[Telegram]', e.message); }
 
   // Sipariş onay maili

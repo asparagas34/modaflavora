@@ -31,8 +31,17 @@ function initBot() {
       try {
         if (data.startsWith('approve_')) {
           const orderId = parseInt(data.replace('approve_', ''));
+          const oldOrder = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
           db.prepare("UPDATE orders SET status = 'processing' WHERE id = ?").run(orderId);
           const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+
+          // EFT siparis onaylandiginda Meta Purchase event tetikle
+          if (oldOrder && oldOrder.payment_method === 'eft' && oldOrder.status === 'pending_payment') {
+            try {
+              const { triggerPurchaseForOrder } = require('./meta-capi');
+              triggerPurchaseForOrder(orderId);
+            } catch (e) { console.error('[CAPI] Telegram purchase trigger:', e.message); }
+          }
           const name = order.guest_name || order.user_id || '-';
 
           bot.editMessageText(

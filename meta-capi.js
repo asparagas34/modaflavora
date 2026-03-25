@@ -114,7 +114,7 @@ function sendEvent(eventName, params = {}) {
 function trackPurchase(req, order, items) {
   const nameParts = (order.guest_name || '').split(' ');
   sendEvent('Purchase', {
-    req,
+    req: req || null,
     eventId: `purchase_${order.id}`,
     userData: {
       email: order.guest_email,
@@ -137,6 +137,22 @@ function trackPurchase(req, order, items) {
       order_id: String(order.id)
     }
   });
+}
+
+/**
+ * Siparis onaylandiginda (admin veya telegram) Purchase event tetikle
+ */
+function triggerPurchaseForOrder(orderId) {
+  try {
+    const { db } = require('./database');
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+    if (!order) return;
+    const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);
+    trackPurchase(null, order, items);
+    console.log(`[CAPI] Purchase event tetiklendi: #${orderId}`);
+  } catch (e) {
+    console.error('[CAPI] Purchase tetikleme hatasi:', e.message);
+  }
 }
 
 /**
@@ -199,6 +215,7 @@ function trackViewContent(req, product) {
 module.exports = {
   sendEvent,
   trackPurchase,
+  triggerPurchaseForOrder,
   trackInitiateCheckout,
   trackAddToCart,
   trackViewContent

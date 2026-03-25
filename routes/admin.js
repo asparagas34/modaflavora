@@ -330,7 +330,16 @@ router.get('/siparisler/:id', (req, res) => {
 
 router.post('/siparisler/durum/:id', (req, res) => {
   const { status } = req.body;
+  const oldOrder = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
   db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
+
+  // EFT siparis onaylandiginda Meta Purchase event tetikle
+  if (status === 'processing' && oldOrder && oldOrder.payment_method === 'eft' && oldOrder.status === 'pending_payment') {
+    try {
+      const { triggerPurchaseForOrder } = require('../meta-capi');
+      triggerPurchaseForOrder(parseInt(req.params.id));
+    } catch (e) { console.error('[CAPI] Admin purchase trigger:', e.message); }
+  }
 
   // Kargo bildirimi
   if (status === 'shipped') {
