@@ -212,6 +212,10 @@ function initDatabase() {
     order_confirmation_enabled: '0',
     shipping_notification_enabled: '0',
     reviews_enabled: '0',
+    wa_contact_enabled: '0',
+    wa_contact_number: '',
+    wa_contact_message: 'Merhaba, {urun} hakkında bilgi almak istiyorum.',
+    wa_contact_btn_text: 'WhatsApp ile Sipariş Ver',
     // WhatsApp ayarlari
     wa_enabled: '0',
     wa_api_url: 'https://graph.facebook.com/v21.0',

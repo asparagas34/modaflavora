@@ -104,6 +104,32 @@
             </div>
           </div>
 
+          <!-- WhatsApp İletişim Butonu -->
+          <div class="pixel-card" style="margin-top:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div>
+                <label style="font-weight:600;font-size:13px;">WhatsApp Sipariş Butonu</label>
+                <small>Ürün sayfasında "Sepete Ekle"nin altında WhatsApp butonu göster</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="wa_contact_enabled" value="1" <%= settings.wa_contact_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label>WhatsApp Numarası <small style="color:#9ca3af;">(90 ile başlayan format, örn: 905551234567)</small></label>
+              <input type="text" name="wa_contact_number" value="<%= settings.wa_contact_number || '' %>" placeholder="905551234567">
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label>Buton Yazısı</label>
+              <input type="text" name="wa_contact_btn_text" value="<%= settings.wa_contact_btn_text || 'WhatsApp ile Sipariş Ver' %>" placeholder="WhatsApp ile Sipariş Ver">
+            </div>
+            <div class="form-group">
+              <label>Mesaj Şablonu <small style="color:#9ca3af;">{urun} yerine ürün adı gelir</small></label>
+              <input type="text" name="wa_contact_message" value="<%= settings.wa_contact_message || 'Merhaba, {urun} hakkında bilgi almak istiyorum.' %>" placeholder="Merhaba, {urun} hakkında bilgi almak istiyorum.">
+            </div>
+          </div>
+
           <!-- Havale / EFT Banka Bilgileri -->
           <p style="font-size:12px;color:#6b7280;margin:0 0 12px;">🏦 Havale / EFT Banka Bilgileri</p>
           <div class="form-row two-col">

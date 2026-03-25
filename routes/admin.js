@@ -820,6 +820,7 @@ router.post('/ayarlar', (req, res) => {
     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_name', 'smtp_from_email', 'smtp_secure',
     'abandoned_cart_delay', 'abandoned_cart_subject',
     'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled', 'reviews_enabled',
+    'wa_contact_enabled', 'wa_contact_number', 'wa_contact_message', 'wa_contact_btn_text',
     'wa_enabled', 'wa_payment_reminder_enabled', 'wa_payment_reminder_delay', 'wa_payment_reminder_message',
     'wa_abandoned_cart_enabled', 'wa_abandoned_cart_delay', 'wa_abandoned_cart_message'];
   const update = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
@@ -828,7 +829,7 @@ router.post('/ayarlar', (req, res) => {
   }
   // Checkbox'lar gönderilmezse 0 kaydet
   const checkboxFields = ['meta_pixel_active', 'google_analytics_active', 'cod_enabled',
-    'smtp_secure', 'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled', 'reviews_enabled',
+    'smtp_secure', 'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled', 'reviews_enabled', 'wa_contact_enabled',
     'wa_enabled', 'wa_payment_reminder_enabled', 'wa_abandoned_cart_enabled'];
   for (const key of checkboxFields) {
     if (req.body[key] === undefined) update.run(key, '0');
