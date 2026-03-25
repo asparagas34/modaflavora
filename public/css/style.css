@@ -1539,8 +1539,9 @@ body { overflow-x: clip; max-width: 100vw; }
 
   /* Hero */
   .hero-slider .slide img { height: 320px; }
-  .slide-content h2 { font-size: 22px; letter-spacing: 1px; }
-  .slide-content p { font-size: 14px; margin-bottom: 15px; }
+  .slide-content { display: none; }
+  .slider-btn { display: none; }
+  .slider-dots { display: none; }
   .hero-placeholder h1 { font-size: 32px; letter-spacing: 3px; }
   .hero-placeholder p { font-size: 14px; }
 
@@ -1645,9 +1646,7 @@ body { overflow-x: clip; max-width: 100vw; }
 
   /* Hero */
   .hero-slider .slide img { height: 240px; }
-  .slide-content h2 { font-size: 18px; }
-  .slide-content p { display: none; }
-  .slider-btn { width: 36px; height: 36px; font-size: 16px; }
+  /* slide-content, slider-btn, slider-dots zaten 768px'de gizli */
 
   /* Categories editorial 480px */
   .categories-editorial { grid-template-columns: 1fr 1fr; grid-auto-rows: 160px; }
