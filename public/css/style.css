@@ -1992,8 +1992,9 @@ body { overflow-x: clip; max-width: 100vw; }
 .gallery-main {
   flex: 1; min-width: 0; position: relative; background: #f9f9f9;
   border-radius: 8px; align-self: flex-start; overflow: hidden;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 3 / 4; cursor: grab; user-select: none;
 }
+.gallery-main:active { cursor: grabbing; }
 .gallery-main img {
   width: 100%; height: 100%; display: block;
   object-fit: cover; object-position: center top;

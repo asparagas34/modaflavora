@@ -464,6 +464,60 @@
       thumbs.forEach((t, i) => t.classList.toggle('active', i === currentImageIdx));
     }
 
+    // ─── Swipe (parmakla kaydirma) ───
+    (function() {
+      const el = document.querySelector('.gallery-main');
+      if (!el || galleryImages.length < 2) return;
+      let startX = 0, startY = 0, diffX = 0, swiping = false;
+
+      el.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        diffX = 0;
+        swiping = true;
+      }, { passive: true });
+
+      el.addEventListener('touchmove', function(e) {
+        if (!swiping) return;
+        diffX = e.touches[0].clientX - startX;
+        const diffY = e.touches[0].clientY - startY;
+        // Yatay kaydirma dikeye baskinysa scroll engelle
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      el.addEventListener('touchend', function() {
+        if (!swiping) return;
+        swiping = false;
+        if (Math.abs(diffX) > 50) {
+          galleryNav(diffX < 0 ? 1 : -1);
+        }
+      }, { passive: true });
+
+      // Mouse ile de kaydirma (desktop drag)
+      let mouseDown = false, mouseStartX = 0;
+      el.addEventListener('mousedown', function(e) {
+        mouseDown = true;
+        mouseStartX = e.clientX;
+        el.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (!mouseDown) return;
+        diffX = e.clientX - mouseStartX;
+      });
+      document.addEventListener('mouseup', function() {
+        if (!mouseDown) return;
+        mouseDown = false;
+        el.style.cursor = '';
+        if (Math.abs(diffX) > 50) {
+          galleryNav(diffX < 0 ? 1 : -1);
+        }
+        diffX = 0;
+      });
+    })();
+
     // ─── Beden ───
     let selectedSize = '<%= validSizes.length > 0 ? validSizes[0] : (isFreeSize ? "Standart" : "") %>';
 
