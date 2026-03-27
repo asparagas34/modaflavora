@@ -70,6 +70,7 @@ function initDatabase() {
       total REAL NOT NULL,
       status TEXT DEFAULT 'pending',
       payment_method TEXT DEFAULT 'cod',
+      payment_token TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
@@ -223,7 +224,7 @@ function initDatabase() {
     wa_token: '',
     wa_payment_reminder_enabled: '0',
     wa_payment_reminder_delay: '60',
-    wa_payment_reminder_message: 'Merhaba {name}, #{order_id} numarali siparisiniz icin odeme bekleniyor. Toplam: {total} TL. Havale/EFT ile odemenizi yaparak siparisinizi onaylayabilirsiniz. IBAN: {iban}',
+    wa_payment_reminder_message: 'Merhaba {name}, #{order_id} numarali siparisiniz icin odeme bekleniyor. Toplam: {total} TL.\n\nOdeme detaylari ve IBAN bilgisi icin: {payment_link}\n\nIBAN: {iban}',
     wa_abandoned_cart_enabled: '0',
     wa_abandoned_cart_delay: '30',
     wa_abandoned_cart_message: 'Merhaba {name}, sepetinizde {count} urun kaldi. Siparisinizi tamamlamayi unutmayin! {site_url}'
@@ -240,6 +241,30 @@ function initDatabase() {
     const hash = bcrypt.hashSync('admin123', 10);
     db.prepare('INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, 1)')
       .run('Admin', 'admin@flavora.com', hash);
+  }
+
+  // Migration: mevcut siparislere payment_token ekle
+  try {
+    const crypto = require('crypto');
+    const noToken = db.prepare('SELECT id FROM orders WHERE payment_token IS NULL').all();
+    if (noToken.length > 0) {
+      const upd = db.prepare('UPDATE orders SET payment_token = ? WHERE id = ?');
+      const tx = db.transaction(() => {
+        noToken.forEach(o => upd.run(crypto.randomBytes(32).toString('hex'), o.id));
+      });
+      tx();
+      console.log(`[DB] ${noToken.length} siparise payment_token eklendi.`);
+    }
+  } catch (e) {
+    // payment_token kolonu henuz yoksa ALTER TABLE ile ekle
+    try {
+      db.exec('ALTER TABLE orders ADD COLUMN payment_token TEXT');
+      console.log('[DB] orders tablosuna payment_token kolonu eklendi.');
+      const crypto = require('crypto');
+      const all = db.prepare('SELECT id FROM orders').all();
+      const upd = db.prepare('UPDATE orders SET payment_token = ? WHERE id = ?');
+      all.forEach(o => upd.run(crypto.randomBytes(32).toString('hex'), o.id));
+    } catch (e2) {}
   }
 }
 

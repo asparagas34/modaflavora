@@ -203,4 +203,33 @@ function sendOrderNotification(orderId) {
   });
 }
 
-module.exports = { initBot, sendOrderNotification };
+function sendPaymentClaimNotification(orderId) {
+  const settings = getSettings();
+  const chatId = settings.telegram_chat_id;
+  if (!bot || !chatId) return;
+
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  if (!order) return;
+
+  const msg =
+    `💰 *ODEME BILDIRIMI*\n\n` +
+    `Musteri siparis *#${orderId}* icin odeme yaptigini bildirdi!\n\n` +
+    `👤 ${order.guest_name || '-'}\n` +
+    `📞 ${order.guest_phone || '-'}\n` +
+    `💰 ${order.total?.toLocaleString('tr-TR')} TL\n\n` +
+    `Lutfen banka hesabinizi kontrol edin.`;
+
+  bot.sendMessage(chatId, msg, {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [[
+        { text: '✅ Onayla', callback_data: `approve_${orderId}` },
+        { text: '📋 Detay', callback_data: `detail_${orderId}` }
+      ]]
+    }
+  }).catch(err => {
+    console.error('[Telegram] Odeme bildirim hatasi:', err.message);
+  });
+}
+
+module.exports = { initBot, sendOrderNotification, sendPaymentClaimNotification };

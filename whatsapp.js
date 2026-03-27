@@ -95,7 +95,11 @@ function getAbandonedCarts() {
 function buildPaymentMessage(order) {
   const settings = getSettings();
   const template = settings.wa_payment_reminder_message ||
-    'Merhaba {name}, #{order_id} numarali siparisiniz icin odeme bekleniyor. Toplam: {total} TL. IBAN: {iban}';
+    'Merhaba {name}, #{order_id} numarali siparisiniz icin odeme bekleniyor. Toplam: {total} TL.\n\nOdeme sayfasi: {payment_link}\n\nIBAN: {iban}';
+
+  const paymentLink = order.payment_token
+    ? `https://modaflavora.com/odeme-hatirlatma/${order.payment_token}`
+    : '';
 
   return fillTemplate(template, {
     name: order.guest_name || '',
@@ -103,7 +107,8 @@ function buildPaymentMessage(order) {
     total: order.total?.toLocaleString('tr-TR') || '0',
     iban: settings.bank_iban || '',
     bank_name: settings.bank_name || '',
-    bank_holder: settings.bank_holder || ''
+    bank_holder: settings.bank_holder || '',
+    payment_link: paymentLink
   });
 }
 

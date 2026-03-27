@@ -244,14 +244,16 @@ router.post('/siparis', (req, res) => {
 
   const pm = payment_method || 'eft';
   const initialStatus = pm === 'eft' ? 'pending_payment' : 'pending';
+  const crypto = require('crypto');
+  const paymentToken = crypto.randomBytes(32).toString('hex');
 
   const result = db.prepare(
-    `INSERT INTO orders (user_id, guest_name, guest_email, guest_phone, address, city, district, zip_code, note, subtotal, shipping, total, payment_method, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO orders (user_id, guest_name, guest_email, guest_phone, address, city, district, zip_code, note, subtotal, shipping, total, payment_method, status, payment_token)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     req.session.user ? req.session.user.id : null,
     name, email, phone, address, city, district || '', zip_code || '', note || '',
-    subtotal, shippingCost, total, pm, initialStatus
+    subtotal, shippingCost, total, pm, initialStatus, paymentToken
   );
 
   const orderId = result.lastInsertRowid;
@@ -326,6 +328,33 @@ router.get('/siparis/tebrikler', (req, res) => {
   const settings = getSettings();
   const purchaseEventId = `purchase_${order.id}`;
   res.render('order-thankyou', { order, items, settings, purchaseEventId });
+});
+
+// Magic Link - Odeme Sayfasi
+router.get('/odeme-hatirlatma/:token', (req, res) => {
+  const order = db.prepare('SELECT * FROM orders WHERE payment_token = ?').get(req.params.token);
+  if (!order) return res.status(404).render('404', { message: 'Siparis bulunamadi veya link gecersiz.' });
+
+  const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+  const settings = getSettings();
+
+  res.render('payment-reminder', { order, items, settings });
+});
+
+// Magic Link - Odeme Yaptim butonu
+router.post('/odeme-hatirlatma/:token/onay', (req, res) => {
+  const order = db.prepare('SELECT * FROM orders WHERE payment_token = ?').get(req.params.token);
+  if (!order) return res.json({ ok: false, error: 'Siparis bulunamadi' });
+
+  // Telegram'a bildirim gonder
+  try {
+    const { sendPaymentClaimNotification } = require('../telegram');
+    if (typeof sendPaymentClaimNotification === 'function') {
+      sendPaymentClaimNotification(order.id);
+    }
+  } catch (e) {}
+
+  res.json({ ok: true });
 });
 
 // Favorites

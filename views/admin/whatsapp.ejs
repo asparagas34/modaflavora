@@ -123,11 +123,16 @@
                   <span class="wa-badge red">Gonderilmedi</span>
                 <% } %>
               </td>
-              <td>
+              <td style="display:flex;gap:4px;flex-wrap:wrap;">
                 <a href="<%= order.waLink %>" target="_blank" class="wa-btn green small"
                    onclick="markSent('payment_reminder', <%= order.id %>, '<%= order.guest_phone %>')">
-                  WhatsApp Gonder
+                  WhatsApp
                 </a>
+                <% if (order.payment_token) { %>
+                <a href="/odeme-hatirlatma/<%= order.payment_token %>" target="_blank" class="wa-btn gray small">
+                  Link
+                </a>
+                <% } %>
               </td>
             </tr>
             <% }); %>
