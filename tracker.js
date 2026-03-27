@@ -1,19 +1,14 @@
 /**
- * Anlık Takip (Live Analytics) Module
+ * Anlik Takip (Live Analytics) Module
  * In-memory visitor tracking + DB-persistent event logging
+ * Restart'ta DB'den bugunku/haftalik verileri geri yukler
  */
 const { db } = require('./database');
 
-// Aktif ziyaretçiler: sessionId → { lastSeen, page, ip, ua, hasCart, isCheckout }
+// Aktif ziyaretciler: sessionId -> { lastSeen, page, ip, ua, hasCart, isCheckout }
 const visitors = new Map();
 
-// Günlük & haftalık event counter'lar (in-memory, hızlı dashboard için)
-const events = {
-  today: { date: getTodayStr(), pageViews: 0, cartAdds: 0, checkouts: 0, orders: 0, revenue: 0 },
-  week: { weekStart: getWeekStartStr(), pageViews: 0, cartAdds: 0, checkouts: 0, orders: 0, revenue: 0 }
-};
-
-// Sayfa bazlı görüntüleme (bugün)
+// Sayfa bazli goruntuleme (bugun)
 const pageViews = new Map();
 
 // DB insert prepared statements
@@ -23,7 +18,6 @@ try {
     'INSERT INTO site_events (session_id, event_type, page, page_label, device, referrer, cart_total) VALUES (?, ?, ?, ?, ?, ?, ?)'
   );
 } catch (e) {
-  // Tablo henüz oluşmamış olabilir, server restart sonrası düzelir
   insertEvent = null;
 }
 
@@ -38,6 +32,87 @@ function getWeekStartStr() {
   monday.setDate(now.getDate() - day + 1);
   return monday.toISOString().split('T')[0];
 }
+
+/**
+ * Baslangicta DB'den bugunku ve haftalik istatistikleri yukle
+ * Boylece restart sonrasi veriler sifirlanmaz
+ */
+function loadStatsFromDB() {
+  const today = getTodayStr();
+  const weekStart = getWeekStartStr();
+
+  let todayStats = { pageViews: 0, cartAdds: 0, checkouts: 0, orders: 0, revenue: 0 };
+  let weekStats = { pageViews: 0, cartAdds: 0, checkouts: 0, orders: 0, revenue: 0 };
+
+  try {
+    // Bugunku page views
+    const todayPV = db.prepare(
+      "SELECT COUNT(*) as c FROM site_events WHERE date(created_at) = ? AND event_type LIKE 'page_%'"
+    ).get(today);
+    todayStats.pageViews = todayPV?.c || 0;
+
+    // Bugunku cart adds
+    const todayCA = db.prepare(
+      "SELECT COUNT(*) as c FROM site_events WHERE date(created_at) = ? AND event_type = 'cart_add'"
+    ).get(today);
+    todayStats.cartAdds = todayCA?.c || 0;
+
+    // Bugunku checkouts
+    const todayCO = db.prepare(
+      "SELECT COUNT(*) as c FROM site_events WHERE date(created_at) = ? AND event_type = 'checkout'"
+    ).get(today);
+    todayStats.checkouts = todayCO?.c || 0;
+
+    // Bugunku orders ve revenue
+    const todayOrd = db.prepare(
+      "SELECT COUNT(*) as c, COALESCE(SUM(cart_total), 0) as rev FROM site_events WHERE date(created_at) = ? AND event_type = 'order'"
+    ).get(today);
+    todayStats.orders = todayOrd?.c || 0;
+    todayStats.revenue = todayOrd?.rev || 0;
+
+    // Haftalik
+    const weekPV = db.prepare(
+      "SELECT COUNT(*) as c FROM site_events WHERE date(created_at) >= ? AND event_type LIKE 'page_%'"
+    ).get(weekStart);
+    weekStats.pageViews = weekPV?.c || 0;
+
+    const weekCA = db.prepare(
+      "SELECT COUNT(*) as c FROM site_events WHERE date(created_at) >= ? AND event_type = 'cart_add'"
+    ).get(weekStart);
+    weekStats.cartAdds = weekCA?.c || 0;
+
+    const weekCO = db.prepare(
+      "SELECT COUNT(*) as c FROM site_events WHERE date(created_at) >= ? AND event_type = 'checkout'"
+    ).get(weekStart);
+    weekStats.checkouts = weekCO?.c || 0;
+
+    const weekOrd = db.prepare(
+      "SELECT COUNT(*) as c, COALESCE(SUM(cart_total), 0) as rev FROM site_events WHERE date(created_at) >= ? AND event_type = 'order'"
+    ).get(weekStart);
+    weekStats.orders = weekOrd?.c || 0;
+    weekStats.revenue = weekOrd?.rev || 0;
+
+    // Bugunku sayfa bazli goruntuleme
+    const todayPages = db.prepare(
+      "SELECT page, COUNT(*) as c FROM site_events WHERE date(created_at) = ? AND event_type LIKE 'page_%' GROUP BY page ORDER BY c DESC LIMIT 50"
+    ).all(today);
+    todayPages.forEach(p => pageViews.set(p.page, p.c));
+
+    console.log(`[Tracker] DB'den yuklendi - Bugun: ${todayStats.pageViews} PV, ${todayStats.orders} siparis | Hafta: ${weekStats.pageViews} PV`);
+  } catch (e) {
+    console.error('[Tracker] DB yuklemede hata:', e.message);
+  }
+
+  return { todayStats, weekStats };
+}
+
+// Baslangicta DB'den yukle
+const loaded = loadStatsFromDB();
+
+const events = {
+  today: { date: getTodayStr(), ...loaded.todayStats },
+  week: { weekStart: getWeekStartStr(), ...loaded.weekStats }
+};
 
 function checkReset() {
   const today = getTodayStr();
@@ -71,7 +146,6 @@ function prettifyPage(path) {
   return path;
 }
 
-// Hangi event type'a karşılık geldiğini belirle
 function getEventType(path) {
   if (path === '/') return 'page_home';
   if (path.startsWith('/urun/')) return 'page_product';
@@ -84,7 +158,7 @@ function getEventType(path) {
 }
 
 /**
- * Her request'te çağrılır — ziyaretçi kaydeder, pageview sayar, DB'ye yazar
+ * Her request'te cagrilir
  */
 function trackRequest(req) {
   const path = req.path;
@@ -105,7 +179,7 @@ function trackRequest(req) {
   const pageName = prettifyPage(path);
   const cartTotal = hasCart ? cart.reduce((sum, item) => sum + item.price * item.quantity, 0) : 0;
 
-  // In-memory güncelle
+  // In-memory guncelle
   visitors.set(sessionId, {
     lastSeen: now, page: path, pageName, ip: req.ip,
     ua: req.get('User-Agent') || '', device, hasCart, isCheckout, cartTotal
@@ -123,14 +197,12 @@ function trackRequest(req) {
       const eventType = getEventType(path);
       const referrer = req.get('Referer') || '';
       insertEvent.run(sessionId, eventType, path, pageName, device, referrer, cartTotal);
-    } catch (e) {
-      // Sessiz hata — DB yazma başarısız olursa in-memory devam eder
-    }
+    } catch (e) {}
   }
 }
 
 /**
- * Özel olayları kaydet (cart_add, checkout, order)
+ * Ozel olaylari kaydet (cart_add, checkout, order)
  */
 function trackEvent(type, value = 0, req = null) {
   checkReset();
@@ -165,7 +237,7 @@ function trackEvent(type, value = 0, req = null) {
 }
 
 /**
- * Admin paneli için anlık istatistikleri döner
+ * Admin paneli icin anlik istatistikleri doner
  */
 function getStats() {
   checkReset();
@@ -226,7 +298,7 @@ function getStats() {
   };
 }
 
-// Her 60 saniyede eski ziyaretçileri temizle
+// Her 60 saniyede eski ziyaretcileri temizle
 setInterval(() => {
   const now = Date.now();
   const ACTIVE_TIMEOUT = 5 * 60 * 1000;
@@ -235,7 +307,7 @@ setInterval(() => {
   }
 }, 60000);
 
-// Her gece 03:00'te 90 günden eski event'leri sil (DB şişmesin)
+// Her gece 90 gunden eski event'leri sil (DB sismesin)
 setInterval(() => {
   try {
     db.prepare("DELETE FROM site_events WHERE created_at < datetime('now', '-90 days')").run();
