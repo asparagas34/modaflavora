@@ -181,8 +181,9 @@ router.get('/urun/:slug', (req, res) => {
      FROM reviews WHERE product_id = ? AND is_approved = 1`
   ).get(product.id);
 
-  // Meta CAPI: ViewContent
-  try { capi.trackViewContent(req, product); } catch (e) {}
+  // Meta CAPI: ViewContent (deduplication eventId)
+  const vcEventId = `vc_${product.id}_${req.sessionID}_${Date.now()}`;
+  try { capi.trackViewContent(req, product, vcEventId); } catch (e) {}
 
   const settings = getSettings();
   const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -193,6 +194,7 @@ router.get('/urun/:slug', (req, res) => {
 
   res.render('product-detail', {
     product, relatedProducts, isFavorited, colorVariants, reviews, reviewStats,
+    vcEventId,
     settings: getSettings(),
     seoTitle,
     seoDescription: seoDesc,
@@ -214,8 +216,9 @@ router.get('/siparis', (req, res) => {
     return res.redirect('/sepet');
   }
   trackEvent('checkout', 0, req);
-  try { capi.trackInitiateCheckout(req, req.session.cart); } catch (e) {}
-  res.render('checkout');
+  const icEventId = `ic_${req.sessionID}_${Date.now()}`;
+  try { capi.trackInitiateCheckout(req, req.session.cart, icEventId); } catch (e) {}
+  res.render('checkout', { icEventId });
 });
 router.get('/odeme', (req, res) => res.redirect('/siparis'));
 
@@ -321,7 +324,8 @@ router.get('/siparis/tebrikler', (req, res) => {
   ).all(orderId);
 
   const settings = getSettings();
-  res.render('order-thankyou', { order, items, settings });
+  const purchaseEventId = `purchase_${order.id}`;
+  res.render('order-thankyou', { order, items, settings, purchaseEventId });
 });
 
 // Favorites

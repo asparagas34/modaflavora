@@ -158,10 +158,10 @@ function triggerPurchaseForOrder(orderId) {
 /**
  * Track InitiateCheckout event (server-side)
  */
-function trackInitiateCheckout(req, cart) {
+function trackInitiateCheckout(req, cart, eventId) {
   sendEvent('InitiateCheckout', {
     req,
-    eventId: `checkout_${req.sessionID}_${Date.now()}`,
+    eventId: eventId || `checkout_${req.sessionID}_${Date.now()}`,
     customData: {
       currency: 'TRY',
       value: cart.reduce((s, i) => s + i.price * i.quantity, 0),
@@ -179,11 +179,11 @@ function trackInitiateCheckout(req, cart) {
 /**
  * Track AddToCart event (server-side)
  */
-function trackAddToCart(req, product) {
+function trackAddToCart(req, product, eventId) {
   const price = product.sale_price || product.price;
   sendEvent('AddToCart', {
     req,
-    eventId: `atc_${product.id}_${Date.now()}`,
+    eventId: eventId || `atc_${product.id}_${Date.now()}`,
     customData: {
       currency: 'TRY',
       value: price,
@@ -197,11 +197,11 @@ function trackAddToCart(req, product) {
 /**
  * Track ViewContent event (server-side)
  */
-function trackViewContent(req, product) {
+function trackViewContent(req, product, eventId) {
   const price = product.sale_price || product.price;
   sendEvent('ViewContent', {
     req,
-    eventId: `vc_${product.id}_${req.sessionID}`,
+    eventId: eventId || `vc_${product.id}_${req.sessionID}`,
     customData: {
       currency: 'TRY',
       value: price,

@@ -260,7 +260,7 @@ function addToCart(productId, productName, size, color) {
       const badge = document.getElementById('cartBadge');
       if (badge) badge.textContent = data.cartCount;
 
-      // Meta Pixel AddToCart
+      // Meta Pixel AddToCart (deduplication ile)
       if (typeof fbq !== 'undefined' && data.product) {
         fbq('track', 'AddToCart', {
           content_ids: [String(data.product.id)],
@@ -268,7 +268,7 @@ function addToCart(productId, productName, size, color) {
           content_type: 'product',
           value: data.product.price,
           currency: 'TRY'
-        });
+        }, data.atcEventId ? { eventID: data.atcEventId } : undefined);
       }
 
       // Sepet çekmecesini aç

@@ -36,11 +36,13 @@ router.post('/cart/add', (req, res) => {
   const cartTotal = req.session.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   trackEvent('cart_add', 0, req);
-  try { capi.trackAddToCart(req, product); } catch (e) {}
+  const atcEventId = `atc_${product.id}_${Date.now()}`;
+  try { capi.trackAddToCart(req, product, atcEventId); } catch (e) {}
   const itemPrice = product.sale_price || product.price;
   res.json({
     success: true, cartCount, cartTotal,
     message: 'Ürün sepete eklendi',
+    atcEventId,
     product: { id: product.id, name: product.name, price: itemPrice, category: product.category_id }
   });
 });

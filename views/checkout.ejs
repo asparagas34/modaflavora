@@ -337,7 +337,7 @@
     });
     <% } %>
 
-    // Meta Pixel InitiateCheckout
+    // Meta Pixel InitiateCheckout (deduplication ile)
     if (typeof fbq !== 'undefined') {
       fbq('track', 'InitiateCheckout', {
         content_ids: [<%- cart.map(i => "'" + i.productId + "'").join(',') %>],
@@ -345,7 +345,7 @@
         num_items: <%- cart.reduce((s, i) => s + i.quantity, 0) %>,
         value: <%- cart.reduce((s, i) => s + i.price * i.quantity, 0) %>,
         currency: 'TRY'
-      });
+      }, { eventID: '<%= icEventId %>' });
     }
 
     // İl → İlçe (DISTRICTS /js/districts.js'den yükleniyor)

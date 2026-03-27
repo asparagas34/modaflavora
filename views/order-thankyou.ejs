@@ -99,7 +99,7 @@
       order_id: '<%= order.id %>',
       contents: <%- JSON.stringify(items.map(i => ({ id: String(i.product_id), quantity: i.quantity, item_price: i.price }))) %>,
       num_items: <%= items.reduce((s, i) => s + i.quantity, 0) %>
-    });
+    }, { eventID: '<%= purchaseEventId %>' });
   </script>
   <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=<%= settings.meta_pixel_id %>&ev=Purchase&noscript=1"/></noscript>
   <% } %>
