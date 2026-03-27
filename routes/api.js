@@ -145,4 +145,143 @@ router.post('/review/helpful', (req, res) => {
   res.json({ success: true });
 });
 
+// ============ META URUN FEED (Ticaret Yoneticisi) ============
+
+/**
+ * CSV feed: https://modaflavora.com/api/feed/meta.csv
+ * XML feed: https://modaflavora.com/api/feed/meta.xml
+ *
+ * Meta Commerce Manager'da URL olarak ekleyin, otomatik senkron olur.
+ */
+
+// CSV Feed
+router.get('/feed/meta.csv', (req, res) => {
+  const { getSettings } = require('../database');
+  const settings = getSettings();
+  const siteUrl = 'https://modaflavora.com';
+  const brand = settings.site_name || 'FLAVORA';
+
+  const products = db.prepare(`
+    SELECT p.*, c.name as category_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.is_active = 1
+  `).all();
+
+  const headers = ['id','title','description','availability','condition','price','sale_price','link','image_link','additional_image_link','brand','google_product_category','product_type','inventory','status'];
+
+  let csv = headers.join('\t') + '\n';
+
+  for (const p of products) {
+    const price = p.price ? p.price.toFixed(2) + ' TRY' : '';
+    const salePrice = (p.sale_price && p.sale_price < p.price) ? p.sale_price.toFixed(2) + ' TRY' : '';
+    const link = `${siteUrl}/urun/${p.slug}`;
+    const imageLink = p.image ? `${siteUrl}${p.image}` : '';
+
+    // Ek gorseller
+    let additionalImages = '';
+    try {
+      if (p.images) {
+        const imgs = JSON.parse(p.images);
+        additionalImages = imgs.slice(0, 10).map(img => `${siteUrl}${img}`).join(',');
+      }
+    } catch (e) {}
+
+    const desc = (p.description || p.name || '').replace(/[\t\n\r]/g, ' ').replace(/<[^>]*>/g, '').substring(0, 5000);
+    const title = (p.name || '').replace(/[\t\n\r]/g, ' ');
+
+    const row = [
+      p.id,
+      title,
+      desc,
+      'in stock',
+      'new',
+      price,
+      salePrice,
+      link,
+      imageLink,
+      additionalImages,
+      brand,
+      '2271',  // Clothing & Accessories > Clothing
+      p.category_name || 'Giyim',
+      '',
+      'active'
+    ];
+
+    csv += row.map(v => String(v || '').replace(/\t/g, ' ')).join('\t') + '\n';
+  }
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'inline; filename="meta-product-feed.csv"');
+  res.send(csv);
+});
+
+// XML/RSS Feed
+router.get('/feed/meta.xml', (req, res) => {
+  const { getSettings } = require('../database');
+  const settings = getSettings();
+  const siteUrl = 'https://modaflavora.com';
+  const brand = settings.site_name || 'FLAVORA';
+
+  const products = db.prepare(`
+    SELECT p.*, c.name as category_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.is_active = 1
+  `).all();
+
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+<channel>
+<title>${esc(brand)} - Urun Katalogu</title>
+<link>${siteUrl}</link>
+<description>${esc(settings.site_description || '')}</description>
+`;
+
+  for (const p of products) {
+    const price = p.price ? p.price.toFixed(2) + ' TRY' : '';
+    const salePrice = (p.sale_price && p.sale_price < p.price) ? p.sale_price.toFixed(2) + ' TRY' : '';
+    const link = `${siteUrl}/urun/${p.slug}`;
+    const imageLink = p.image ? `${siteUrl}${p.image}` : '';
+    const desc = (p.description || p.name || '').replace(/<[^>]*>/g, '').substring(0, 5000);
+
+    xml += `<item>
+<g:id>${p.id}</g:id>
+<g:title>${esc(p.name)}</g:title>
+<g:description>${esc(desc)}</g:description>
+<g:link>${esc(link)}</g:link>
+<g:image_link>${esc(imageLink)}</g:image_link>
+`;
+
+    // Ek gorseller
+    try {
+      if (p.images) {
+        const imgs = JSON.parse(p.images);
+        imgs.slice(0, 10).forEach(img => {
+          xml += `<g:additional_image_link>${esc(siteUrl + img)}</g:additional_image_link>\n`;
+        });
+      }
+    } catch (e) {}
+
+    xml += `<g:availability>in stock</g:availability>
+<g:condition>new</g:condition>
+<g:price>${price}</g:price>
+`;
+    if (salePrice) xml += `<g:sale_price>${salePrice}</g:sale_price>\n`;
+
+    xml += `<g:brand>${esc(brand)}</g:brand>
+<g:google_product_category>2271</g:google_product_category>
+<g:product_type>${esc(p.category_name || 'Giyim')}</g:product_type>
+</item>
+`;
+  }
+
+  xml += `</channel>\n</rss>`;
+
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.send(xml);
+});
+
 module.exports = router;
