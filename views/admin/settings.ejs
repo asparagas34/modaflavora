@@ -91,6 +91,25 @@
             </div>
           </div>
 
+          <!-- Kredi Kartı / Shopier -->
+          <div class="pixel-card" style="margin-bottom:16px;">
+            <div class="toggle-row" style="margin-bottom:12px;">
+              <div>
+                <label>Kredi Kartı ile Ödeme (Shopier)</label>
+                <small>Aktif edildiğinde checkout'ta kredi kartı seçeneği görünür. Ödeme Shopier altyapısı üzerinden alınır.</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" name="card_payment_enabled" value="1" <%= settings.card_payment_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>Shopier API Token (PAT)</label>
+              <input type="text" name="shopier_pat" value="<%= settings.shopier_pat || '' %>" placeholder="eyJ0eXAiOiJKV1Qi..." style="font-family:monospace;font-size:11px;">
+              <small style="color:#6b7280;font-size:11px;">Shopier → Mağaza Ayarları → API → Personal Access Token</small>
+            </div>
+          </div>
+
           <div class="pixel-card" style="margin-top:12px;">
             <div style="display:flex;align-items:center;justify-content:space-between;">
               <div>
