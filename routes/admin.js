@@ -822,7 +822,7 @@ router.post('/ayarlar', (req, res) => {
   const fields = ['site_name', 'site_description', 'phone', 'email', 'address',
     'instagram', 'facebook', 'pinterest', 'free_shipping_limit', 'shipping_cost', 'announcement',
     'meta_pixel_id', 'meta_pixel_active', 'google_analytics_id', 'google_analytics_active',
-    'cod_enabled', 'bank_holder', 'bank_name', 'bank_branch', 'bank_iban',
+    'cod_cash_enabled', 'cod_card_enabled', 'cod_fee', 'cod_min_amount', 'card_payment_enabled', 'shopier_pat', 'bank_holder', 'bank_name', 'bank_branch', 'bank_iban',
     'payment_eft_desc', 'payment_eft_note',
     'telegram_bot_token', 'telegram_chat_id',
     'meta_capi_token', 'meta_capi_test_code',
@@ -837,7 +837,7 @@ router.post('/ayarlar', (req, res) => {
     if (req.body[key] !== undefined) update.run(key, req.body[key]);
   }
   // Checkbox'lar gönderilmezse 0 kaydet
-  const checkboxFields = ['meta_pixel_active', 'google_analytics_active', 'cod_enabled',
+  const checkboxFields = ['meta_pixel_active', 'google_analytics_active', 'cod_cash_enabled', 'cod_card_enabled', 'card_payment_enabled',
     'smtp_secure', 'abandoned_cart_enabled', 'order_confirmation_enabled', 'shipping_notification_enabled', 'reviews_enabled', 'wa_contact_enabled',
     'wa_enabled', 'wa_payment_reminder_enabled', 'wa_abandoned_cart_enabled'];
   for (const key of checkboxFields) {
@@ -859,7 +859,281 @@ router.post('/ayarlar', (req, res) => {
     if (req.body.wa_enabled === '1') initWhatsApp();
     else stopWhatsApp();
   } catch (e) {}
+  // Cache temizle - ayarlar hemen aktif olsun
+  if (req.app.clearSettingsCache) req.app.clearSettingsCache();
+
   res.redirect('/admin/ayarlar');
 });
+
+
+
+// ============ MESAJLAR (Chat) ============
+router.get('/mesajlar', isAdmin, (req, res) => {
+  res.render('admin/chat', { currentPath: '/admin/mesajlar', settings: res.locals.settings || {} });
+});
+
+router.get('/chat/api/conversations', isAdmin, (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT platform, customer_id,
+        MAX(message) as last_message,
+        MAX(created_at) as last_time,
+        COUNT(*) as message_count
+      FROM chat_messages
+      GROUP BY platform, customer_id
+      ORDER BY MAX(created_at) DESC
+    `).all();
+    res.json(rows);
+  } catch(e) {
+    console.error('Chat conversations error:', e.message);
+    res.json([]);
+  }
+});
+
+router.get('/chat/api/messages', isAdmin, (req, res) => {
+  try {
+    const { customer_id, platform } = req.query;
+    if (!customer_id || !platform) return res.json([]);
+    const rows = db.prepare(`
+      SELECT * FROM chat_messages
+      WHERE customer_id = ? AND platform = ?
+      ORDER BY created_at ASC
+    `).all(customer_id, platform);
+    res.json(rows);
+  } catch(e) {
+    console.error('Chat messages error:', e.message);
+    res.json([]);
+  }
+});
+
+// Chat takeover - Sohbeti devral
+router.post('/chat/api/takeover', isAdmin, (req, res) => {
+  try {
+    const { customer_id, platform } = req.body;
+    if (!customer_id || !platform) return res.json({ success: false, error: 'Eksik bilgi' });
+
+    // Create table if not exists
+    db.exec(`CREATE TABLE IF NOT EXISTS chat_takeover (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      taken_at DATETIME DEFAULT (datetime('now')),
+      released_at DATETIME,
+      UNIQUE(platform, customer_id)
+    )`);
+
+    // Check if already taken over
+    const existing = db.prepare("SELECT id FROM chat_takeover WHERE platform = ? AND customer_id = ? AND released_at IS NULL").get(platform, customer_id);
+    if (existing) return res.json({ success: true, already: true });
+
+    // Insert or replace
+    db.prepare("INSERT OR REPLACE INTO chat_takeover (platform, customer_id, taken_at, released_at) VALUES (?, ?, datetime('now'), NULL)").run(platform, customer_id);
+    res.json({ success: true });
+  } catch(e) {
+    console.error('Takeover error:', e.message);
+    res.json({ success: false, error: e.message });
+  }
+});
+
+// Chat release - Sohbeti birak
+router.post('/chat/api/release', isAdmin, (req, res) => {
+  try {
+    const { customer_id, platform } = req.body;
+    if (!customer_id || !platform) return res.json({ success: false, error: 'Eksik bilgi' });
+
+    db.prepare("UPDATE chat_takeover SET released_at = datetime('now') WHERE platform = ? AND customer_id = ? AND released_at IS NULL").run(platform, customer_id);
+    res.json({ success: true });
+  } catch(e) {
+    console.error('Release error:', e.message);
+    res.json({ success: false, error: e.message });
+  }
+});
+
+// Check takeover status
+router.get('/chat/api/takeover-status', isAdmin, (req, res) => {
+  try {
+    const { customer_id, platform } = req.query;
+
+    // Create table if not exists
+    db.exec(`CREATE TABLE IF NOT EXISTS chat_takeover (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      taken_at DATETIME DEFAULT (datetime('now')),
+      released_at DATETIME,
+      UNIQUE(platform, customer_id)
+    )`);
+
+    if (!customer_id || !platform) return res.json({ taken: false });
+    const row = db.prepare("SELECT id FROM chat_takeover WHERE platform = ? AND customer_id = ? AND released_at IS NULL").get(platform, customer_id);
+    res.json({ taken: !!row });
+  } catch(e) {
+    res.json({ taken: false });
+  }
+});
+
+// Admin send message - WhatsApp or Instagram
+router.post('/chat/api/send', isAdmin, async (req, res) => {
+  try {
+    const { customer_id, platform, message } = req.body;
+    if (!customer_id || !platform || !message) return res.json({ success: false, error: 'Eksik bilgi' });
+
+    const axios = require('axios');
+
+    if (platform === 'whatsapp') {
+      // Send via WhatsApp API
+      const settings = {};
+      const keys = ['wa_api_token', 'wa_phone_number_id', 'wa_api_url'];
+      const rows = db.prepare("SELECT key, value FROM settings WHERE key IN ('wa_api_token','wa_phone_number_id','wa_api_url')").all();
+      for (const r of rows) settings[r.key] = r.value;
+
+      const token = settings.wa_api_token;
+      const phoneNumberId = settings.wa_phone_number_id;
+      const apiUrl = settings.wa_api_url || 'https://graph.facebook.com/v21.0';
+
+      await axios.post(`${apiUrl}/${phoneNumberId}/messages`, {
+        messaging_product: 'whatsapp',
+        to: customer_id,
+        type: 'text',
+        text: { body: message }
+      }, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+
+    } else if (platform === 'instagram') {
+      // Send via Instagram API (graph.instagram.com kullaniliyor)
+      const igTokenRow = db.prepare("SELECT value FROM settings WHERE key = 'instagram_page_access_token'").get();
+      const igToken = (igTokenRow && igTokenRow.value) || 'IGAALbC6EGnNtBZAGJWeEdUbHNVb3ZAsSk1wdEdNQXdFLU50R0tIZAmVTX093eDFQYVFJX2JiUUNmcm12c21XZAVdvaXdXSVdmWE9MazI1ZAUdxM05sMEtiZAHE2ZA0tCSHdIV0pTWnZA5NjlMREllM05wTTJkMlNfVzFrM2JuS0NKcjc2ZAwZDZD';
+
+      await axios.post('https://graph.instagram.com/v21.0/me/messages', {
+        recipient: { id: customer_id },
+        message: { text: message }
+      }, {
+        headers: { 'Authorization': `Bearer ${igToken}`, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Save to chat_messages
+    db.prepare("INSERT INTO chat_messages (platform, customer_id, direction, message) VALUES (?, ?, 'outgoing', ?)").run(platform, customer_id, message);
+
+    res.json({ success: true });
+  } catch(e) {
+    const errData = e.response && e.response.data ? JSON.stringify(e.response.data) : e.message;
+    console.error('Send message error:', errData);
+    res.json({ success: false, error: e.response && e.response.data && e.response.data.error ? e.response.data.error.message : e.message });
+  }
+});
+
+
+// ============ BOT TOGGLE ============
+router.get('/chat/api/bot-status', isAdmin, (req, res) => {
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'chatbot_active'").get();
+    res.json({ active: row ? row.value === '1' : true });
+  } catch(e) {
+    res.json({ active: true });
+  }
+});
+
+router.post('/chat/api/bot-toggle', isAdmin, (req, res) => {
+  try {
+    const { active } = req.body;
+    const val = active ? '1' : '0';
+    const existing = db.prepare("SELECT value FROM settings WHERE key = 'chatbot_active'").get();
+    if (existing) {
+      db.prepare("UPDATE settings SET value = ? WHERE key = 'chatbot_active'").run(val);
+    } else {
+      db.prepare("INSERT INTO settings (key, value) VALUES ('chatbot_active', ?)").run(val);
+    }
+    res.json({ success: true, active: active });
+  } catch(e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
+// ============ CHATBOT KURALLARI ============
+router.get('/chatbot-kurallari', isAdmin, (req, res) => {
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'ai_rules'").get();
+    const aiRules = row ? row.value : getDefaultAiRules();
+    res.render('admin/chatbot-rules', {
+      currentPath: '/admin/chatbot-kurallari',
+      settings: res.locals.settings || {},
+      aiRules: aiRules
+    });
+  } catch(e) {
+    console.error('Chatbot rules error:', e.message);
+    res.render('admin/chatbot-rules', {
+      currentPath: '/admin/chatbot-kurallari',
+      settings: res.locals.settings || {},
+      aiRules: ''
+    });
+  }
+});
+
+router.post('/chatbot-kurallari/kaydet', isAdmin, (req, res) => {
+  try {
+    const { rules } = req.body;
+    if (!rules || rules.trim().length < 10) return res.json({ success: false, error: 'Kurallar cok kisa' });
+
+    const existing = db.prepare("SELECT value FROM settings WHERE key = 'ai_rules'").get();
+    if (existing) {
+      db.prepare("UPDATE settings SET value = ? WHERE key = 'ai_rules'").run(rules);
+    } else {
+      db.prepare("INSERT INTO settings (key, value) VALUES ('ai_rules', ?)").run(rules);
+    }
+    res.json({ success: true });
+  } catch(e) {
+    console.error('Save rules error:', e.message);
+    res.json({ success: false, error: e.message });
+  }
+});
+
+router.post('/chatbot-kurallari/sifirla', isAdmin, (req, res) => {
+  try {
+    db.prepare("DELETE FROM settings WHERE key = 'ai_rules'").run();
+    res.json({ success: true, rules: getDefaultAiRules() });
+  } catch(e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
+function getDefaultAiRules() {
+  return `Sen Modaflavora butik magazasinin musteri temsilcisisin. Adin "Modaflavora Asistan".
+Musteri sana yazdiginda sen Modaflavora magazasinin gercek bir calisani gibi cevap veriyorsun.
+WhatsApp ve Instagram uzerinden musterilere yardimci oluyorsun.
+
+## GENEL KURALLAR
+- Yapay zeka oldugunu SOYLEME, kendini Modaflavora musteri temsilcisi olarak tanit
+- Aktif bir konusmada musteriye tekrar "Merhaba! Nasil yardimci olabilirim?" deme, konudan devam et
+- Musteriye "urun ID'si" veya teknik terim sorma; urun adini netlestirmesini iste
+
+## USLUP
+- Profesyonel, guler yuzlu, butik danismani gibi yanit ver
+- Musteriye "siz" diye hitap et
+- Kisa ve oz (2-6 satir), olculu emoji
+- Musteri sinirlendiginde sakin kal, savunmaya gecme
+
+## URUN BILGISI
+- SADECE katalogdaki urun bilgilerini kullan, fiyat veya ozellik UYDURMA
+- Urun bulundugunda fiyat + link paylas
+- Birden fazla eslesme varsa en alakali 3-5 tanesini listele
+
+## MANKEN BILGILERI
+- Boy: 168cm, Kilo: 60kg, Beden: Medium
+- Bu bilgi TUM urunler icin gecerlidir
+
+## ODEME
+- Havale / EFT / FAST
+- Banka Hesap Bilgileri:
+  Hesap Sahibi: {{HESAP_SAHIBI}}
+  Banka: {{BANKA}}
+  IBAN: {{IBAN}}
+
+## YASAKLAR
+- Katalog disi urun bilgisi verme
+- Fiyat veya olcu uydurma
+- Bot veya yapay zeka oldugunu soyleme`;
+}
 
 module.exports = router;

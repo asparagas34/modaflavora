@@ -46,7 +46,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
   }
 }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
   maxAge: '30d',
   etag: true
 }));
@@ -91,11 +91,8 @@ function getCachedCategories() {
   return _categoriesCache;
 }
 
-// Admin ayar kaydettiğinde cache'i temizle
-app.use('/admin/ayarlar', (req, res, next) => {
-  if (req.method === 'POST') { _settingsCache = null; }
-  next();
-});
+// Admin ayar kaydettiğinde cache'i temizle - app uzerinden fonksiyon olarak erisim
+app.clearSettingsCache = function() { _settingsCache = null; _settingsCacheTime = 0; };
 app.use('/admin/kategori', (req, res, next) => {
   if (req.method === 'POST') { _categoriesCache = null; }
   next();
@@ -117,6 +114,7 @@ app.use('/', require('./routes/shop'));
 app.use('/admin', require('./routes/admin'));
 app.use('/api', require('./routes/api'));
 app.use('/auth', require('./routes/auth'));
+app.use('/shopier', require('./routes/shopier'));
 
 // 404
 app.use((req, res) => {

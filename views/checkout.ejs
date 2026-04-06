@@ -89,12 +89,13 @@
     .checkout-steps { display:flex; align-items:center; justify-content:center; max-width:480px; margin:0 auto 28px; position:relative; }
     .checkout-step { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
     .checkout-steps::before {
-      content:''; position:absolute; top:16px; left:16%; right:16%;
+      content:''; position:absolute; top:16px; left:12%; right:12%;
       height:2px; background:#e5e7eb; z-index:0;
     }
     .checkout-steps::after {
-      content:''; position:absolute; top:16px; left:16%;
-      width:33%; height:2px; background:#111; z-index:0;
+      content:''; position:absolute; top:16px; left:12%;
+      width:0%; height:2px; background:#111; z-index:0;
+      transition: width .3s ease;
     }
 
     /* Estimated delivery */
@@ -104,7 +105,23 @@
     }
     .delivery-estimate svg { flex-shrink:0; }
     @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Progress bar step widths */
+    .checkout-steps.step-address::after { width:25% !important; }
+    .checkout-steps.step-payment::after { width:50% !important; }
+
+    /* Validation error */
+    .form-group input.field-error,
+    .form-group select.field-error,
+    .form-group textarea.field-error { border-color:#ef4444 !important; }
+
+    /* Back link hover */
+    #stepPayment a:hover { color:#111; }
   </style>
+<style>
+  .payment-option.cod-disabled { opacity:0.5; cursor:not-allowed; pointer-events:none; position:relative; }
+  .payment-option.cod-disabled input[disabled] + .payment-option-icon { opacity:0.4; }
+</style>
 </head>
 <body>
   <%- include('partials/header') %>
@@ -120,17 +137,21 @@
     <div class="container">
 
       <!-- Adım Göstergesi -->
-      <div class="checkout-steps" id="checkoutSteps">
+      <div class="checkout-steps step-address" id="checkoutSteps">
         <div class="checkout-step done" data-step="1">
           <span class="step-num">✓</span>
           <span class="step-label">Sepet</span>
         </div>
-        <div class="checkout-step active" data-step="2">
+        <div class="checkout-step active" data-step="2" id="stepIndicator2">
           <span class="step-num">2</span>
-          <span class="step-label">Bilgiler & Ödeme</span>
+          <span class="step-label">Bilgiler</span>
         </div>
-        <div class="checkout-step" data-step="3">
+        <div class="checkout-step" data-step="3" id="stepIndicator3">
           <span class="step-num">3</span>
+          <span class="step-label">Ödeme</span>
+        </div>
+        <div class="checkout-step" data-step="4" id="stepIndicator4">
+          <span class="step-num">4</span>
           <span class="step-label">Onay</span>
         </div>
       </div>
@@ -139,6 +160,9 @@
 
         <!-- ═══ SOL: FORM ═══ -->
         <div>
+
+        <!-- ═══ ADIM 1: BİLGİLER ═══ -->
+        <div id="stepAddress">
 
           <!-- Kişisel Bilgiler -->
           <div class="checkout-card">
@@ -187,12 +211,88 @@
             </div>
           </div>
 
+          <!-- Devam Et butonu -->
+          <button type="button" class="btn btn-primary btn-lg btn-block" id="btnContinue" onclick="goToPaymentStep()" style="margin-top:4px;">DEVAM ET →</button>
+
+        </div><!-- /stepAddress -->
+
+        <!-- ═══ ADIM 2: ÖDEME ═══ -->
+        <div id="stepPayment" style="display:none;">
+
+          <!-- Geri dön linki -->
+          <div style="margin-bottom:16px;">
+            <a href="javascript:void(0)" onclick="goBackToAddress()" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#555;text-decoration:none;">
+              ← Bilgilere Geri Dön
+            </a>
+          </div>
+
           <!-- Ödeme Yöntemi -->
           <div class="checkout-card">
             <h3>Ödeme Yöntemi</h3>
+            <%
+            var codMinAmount = parseFloat(settings.cod_min_amount || 0);
+            var cartSubtotal = cart.reduce(function(s, i) { return s + i.price * i.quantity; }, 0);
+            var codAllowed = codMinAmount <= 0 || cartSubtotal >= codMinAmount;
+            var defaultPayment = settings.payment_default_method || 'eft';
+            var codIsDefault = defaultPayment === 'cod';
+            // Varsayılan seçili olanı belirle
+            var defaultChecked = codIsDefault ? (settings.cod_cash_enabled === '1' ? 'cod_cash' : (settings.cod_card_enabled === '1' ? 'cod_card' : 'eft')) : 'eft';
+            // COD varsayılan ama codAllowed değilse EFT'ye düş
+            if (codIsDefault && !codAllowed) defaultChecked = 'eft';
+            %>
             <div class="payment-options">
 
-              <!-- Havale / EFT (her zaman göster) -->
+              <% if (codIsDefault) { %>
+              <!-- === KAPIDA ÖDEME ÖNCE === -->
+              <% if (settings.cod_cash_enabled === '1') { %>
+              <label class="payment-option<%= !codAllowed ? ' cod-disabled' : '' %>" onclick="<%= codAllowed ? "showPaymentInfo('cod_cash')" : '' %>">
+                <input type="radio" name="payment_method" value="cod_cash" <%= defaultChecked === 'cod_cash' ? 'checked' : '' %> <%= !codAllowed ? 'disabled' : '' %>>
+                <span class="payment-option-icon">💵</span>
+                <div class="payment-option-content">
+                  <strong>Kapıda Nakit Ödeme</strong>
+                  <span>Teslimat sırasında nakit ödeme yapın<%= parseFloat(settings.cod_fee || 0) > 0 ? ' (+' + parseFloat(settings.cod_fee).toLocaleString('tr-TR') + ' ₺ kapıda ödeme ücreti)' : '' %></span>
+                  <% if (!codAllowed) { %>
+                  <span style="display:block;margin-top:6px;color:#dc2626;font-size:12px;font-weight:600;">Kapıda ödeme için minimum sepet tutarı <%= codMinAmount.toLocaleString('tr-TR') %> ₺ olmalıdır.</span>
+                  <% } %>
+                </div>
+              </label>
+              <% } %>
+              <% if (settings.cod_card_enabled === '1') { %>
+              <label class="payment-option<%= !codAllowed ? ' cod-disabled' : '' %>" onclick="<%= codAllowed ? "showPaymentInfo('cod_card')" : '' %>">
+                <input type="radio" name="payment_method" value="cod_card" <%= defaultChecked === 'cod_card' ? 'checked' : '' %> <%= !codAllowed ? 'disabled' : '' %>>
+                <span class="payment-option-icon">💳</span>
+                <div class="payment-option-content">
+                  <strong>Kapıda Kredi Kartı ile Ödeme</strong>
+                  <span>Teslimat sırasında kredi kartı ile ödeme yapın<%= parseFloat(settings.cod_fee || 0) > 0 ? ' (+' + parseFloat(settings.cod_fee).toLocaleString('tr-TR') + ' ₺ kapıda ödeme ücreti)' : '' %></span>
+                  <% if (!codAllowed) { %>
+                  <span style="display:block;margin-top:6px;color:#dc2626;font-size:12px;font-weight:600;">Kapıda ödeme için minimum sepet tutarı <%= codMinAmount.toLocaleString('tr-TR') %> ₺ olmalıdır.</span>
+                  <% } %>
+                </div>
+              </label>
+              <% } %>
+              <!-- Havale / EFT -->
+              <label class="payment-option" onclick="showPaymentInfo('eft')">
+                <input type="radio" name="payment_method" value="eft" <%= defaultChecked === 'eft' ? 'checked' : '' %>>
+                <span class="payment-option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg></span>
+                <div class="payment-option-content">
+                  <strong>EFT / Havale / FAST</strong>
+                  <span><%= settings.payment_eft_desc || 'Banka hesabına güvenli ödeme gönderin — sipariş onaylanır' %></span>
+                </div>
+              </label>
+              <!-- Kredi Kartı -->
+              <% if (settings.card_payment_enabled === '1') { %>
+              <label class="payment-option" onclick="showPaymentInfo('card')">
+                <input type="radio" name="payment_method" value="card">
+                <span class="payment-option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>
+                <div class="payment-option-content">
+                  <strong>Kredi Kartı / Banka Kartı</strong>
+                  <span>Shopier güvenli ödeme altyapısı ile kredi kartı veya banka kartı ile ödeyin. Taksit imkanı.</span>
+                </div>
+              </label>
+              <% } %>
+
+              <% } else { %>
+              <!-- === EFT ÖNCE (varsayılan) === -->
               <label class="payment-option" onclick="showPaymentInfo('eft')">
                 <input type="radio" name="payment_method" value="eft" checked>
                 <span class="payment-option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg></span>
@@ -201,29 +301,58 @@
                   <span><%= settings.payment_eft_desc || 'Banka hesabına güvenli ödeme gönderin — sipariş onaylanır' %></span>
                 </div>
               </label>
-
-              <% if (settings.cod_enabled === '1') { %>
-              <!-- Kapıda Ödeme (admin panelden açık ise göster) -->
-              <label class="payment-option" onclick="showPaymentInfo('cod')">
-                <input type="radio" name="payment_method" value="cod">
+              <% if (settings.cod_cash_enabled === '1') { %>
+              <label class="payment-option<%= !codAllowed ? ' cod-disabled' : '' %>" onclick="<%= codAllowed ? "showPaymentInfo('cod_cash')" : '' %>">
+                <input type="radio" name="payment_method" value="cod_cash" <%= !codAllowed ? 'disabled' : '' %>>
                 <span class="payment-option-icon">💵</span>
                 <div class="payment-option-content">
-                  <strong>Kapıda Ödeme</strong>
-                  <span>Nakit veya kredi kartı ile kapıda ödeme</span>
+                  <strong>Kapıda Nakit Ödeme</strong>
+                  <span>Teslimat sırasında nakit ödeme yapın<%= parseFloat(settings.cod_fee || 0) > 0 ? ' (+' + parseFloat(settings.cod_fee).toLocaleString('tr-TR') + ' ₺ kapıda ödeme ücreti)' : '' %></span>
+                  <% if (!codAllowed) { %>
+                  <span style="display:block;margin-top:6px;color:#dc2626;font-size:12px;font-weight:600;">Kapıda ödeme için minimum sepet tutarı <%= codMinAmount.toLocaleString('tr-TR') %> ₺ olmalıdır.</span>
+                  <% } %>
                 </div>
               </label>
+              <% } %>
+              <% if (settings.cod_card_enabled === '1') { %>
+              <label class="payment-option<%= !codAllowed ? ' cod-disabled' : '' %>" onclick="<%= codAllowed ? "showPaymentInfo('cod_card')" : '' %>">
+                <input type="radio" name="payment_method" value="cod_card" <%= !codAllowed ? 'disabled' : '' %>>
+                <span class="payment-option-icon">💳</span>
+                <div class="payment-option-content">
+                  <strong>Kapıda Kredi Kartı ile Ödeme</strong>
+                  <span>Teslimat sırasında kredi kartı ile ödeme yapın<%= parseFloat(settings.cod_fee || 0) > 0 ? ' (+' + parseFloat(settings.cod_fee).toLocaleString('tr-TR') + ' ₺ kapıda ödeme ücreti)' : '' %></span>
+                  <% if (!codAllowed) { %>
+                  <span style="display:block;margin-top:6px;color:#dc2626;font-size:12px;font-weight:600;">Kapıda ödeme için minimum sepet tutarı <%= codMinAmount.toLocaleString('tr-TR') %> ₺ olmalıdır.</span>
+                  <% } %>
+                </div>
+              </label>
+              <% } %>
+              <!-- Kredi Kartı -->
+              <% if (settings.card_payment_enabled === '1') { %>
+              <label class="payment-option" onclick="showPaymentInfo('card')">
+                <input type="radio" name="payment_method" value="card">
+                <span class="payment-option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>
+                <div class="payment-option-content">
+                  <strong>Kredi Kartı / Banka Kartı</strong>
+                  <span>Shopier güvenli ödeme altyapısı ile kredi kartı veya banka kartı ile ödeyin. Taksit imkanı.</span>
+                </div>
+              </label>
+              <% } %>
               <% } %>
 
             </div>
 
             <!-- Havale bilgi notu -->
-            <div class="bank-info-box show" id="bankInfoBox">
+            <div class="bank-info-box<%= defaultChecked === 'eft' ? ' show' : '' %>" id="bankInfoBox">
               <div class="bank-note" style="margin:0;">
                 🔒 Siparişiniz onaylandıktan sonra ödeme bilgileri tarafınıza iletilecektir.
               </div>
             </div>
 
           </div>
+
+        </div><!-- /stepPayment -->
+
         </div>
 
         <!-- ═══ SAĞ: ÖZET ═══ -->
@@ -253,7 +382,12 @@
           <% if (shipping > 0) { %>
           <div style="font-size:11px;color:#9ca3af;text-align:right;margin-top:-4px;"><%= freeLimit.toLocaleString('tr-TR') %>₺ üzeri ücretsiz kargo</div>
           <% } %>
-          <div class="summary-row total"><span>Toplam</span><span><%= (subtotal + shipping).toLocaleString('tr-TR') %> ₺</span></div>
+          <% const codFee = parseFloat(settings.cod_fee || 0); %>
+          <div class="summary-row cod-fee-row" style="display:none;">
+            <span>Kapıda Ödeme Ücreti</span>
+            <span><%= codFee > 0 ? codFee.toLocaleString('tr-TR') + ' ₺' : '0 ₺' %></span>
+          </div>
+          <div class="summary-row total"><span>Toplam</span><span id="totalAmount" data-base="<%= (subtotal + shipping) %>" data-cod-fee="<%= codFee %>"><%= (subtotal + shipping).toLocaleString('tr-TR') %> ₺</span></div>
 
           <%
             const now = new Date();
@@ -270,7 +404,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             Tahmini teslimat: <strong><%= fmt(d1) %> – <%= fmt(d2) %></strong>
           </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-block">SİPARİŞİ ONAYLA</button>
+          <button type="submit" class="btn btn-primary btn-lg btn-block" id="btnSubmitOrder">SİPARİŞİ ONAYLA</button>
           <div class="secure-badge">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
             256-bit SSL ile korumalı
@@ -285,10 +419,92 @@
   <script src="/js/districts.js"></script>
   <script src="/js/main.js"></script>
   <script>
+    // Adim yonetimi
+    function goToPaymentStep() {
+      // Form validation - adres adimdaki zorunlu alanlari kontrol et
+      var stepAddr = document.getElementById('stepAddress');
+      var requiredFields = stepAddr.querySelectorAll('[required]');
+      var allValid = true;
+      for (var i = 0; i < requiredFields.length; i++) {
+        if (!requiredFields[i].value || !requiredFields[i].value.trim()) {
+          requiredFields[i].focus();
+          requiredFields[i].style.borderColor = '#ef4444';
+          allValid = false;
+          break;
+        } else {
+          requiredFields[i].style.borderColor = '';
+        }
+      }
+      // Email format kontrolu
+      var emailField = stepAddr.querySelector('input[type="email"]');
+      if (emailField && emailField.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailField.value)) {
+        emailField.focus();
+        emailField.style.borderColor = '#ef4444';
+        allValid = false;
+      }
+      // Telefon kontrolu
+      var phoneField = document.getElementById('phoneInput');
+      if (phoneField && phoneField.value && phoneField.value.length < 10) {
+        phoneField.focus();
+        phoneField.style.borderColor = '#ef4444';
+        allValid = false;
+      }
+      if (!allValid) return;
+
+      document.getElementById('stepAddress').style.display = 'none';
+      document.getElementById('stepPayment').style.display = 'block';
+
+      // Step indicator guncelle
+      document.getElementById('stepIndicator2').className = 'checkout-step done';
+      document.getElementById('stepIndicator2').querySelector('.step-num').textContent = '✓';
+      document.getElementById('stepIndicator3').className = 'checkout-step active';
+
+      // Progress bar guncelle
+      updateProgressBar(2);
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goBackToAddress() {
+      document.getElementById('stepPayment').style.display = 'none';
+      document.getElementById('stepAddress').style.display = 'block';
+
+      // Step indicator guncelle
+      document.getElementById('stepIndicator2').className = 'checkout-step active';
+      document.getElementById('stepIndicator2').querySelector('.step-num').textContent = '2';
+      document.getElementById('stepIndicator3').className = 'checkout-step';
+
+      updateProgressBar(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateProgressBar(step) {
+      // step 1 = adres (25%), step 2 = odeme (50%)
+      if (step === 1) {
+        document.querySelector('.checkout-steps').classList.remove('step-payment');
+        document.querySelector('.checkout-steps').classList.add('step-address');
+      } else {
+        document.querySelector('.checkout-steps').classList.remove('step-address');
+        document.querySelector('.checkout-steps').classList.add('step-payment');
+      }
+    }
+
     // Ödeme seçimi
     function showPaymentInfo(method) {
       const box = document.getElementById('bankInfoBox');
       if (box) box.classList.toggle('show', method === 'eft');
+
+      // Kapida odeme ucreti goster/gizle ve toplami guncelle
+      const totalEl = document.getElementById('totalAmount');
+      const codFeeRow = document.querySelector('.cod-fee-row');
+      const baseTotal = parseFloat(totalEl.dataset.base);
+      const codFee = parseFloat(totalEl.dataset.codFee) || 0;
+      const isCod = method === 'cod_cash' || method === 'cod_card';
+
+      if (codFeeRow) codFeeRow.style.display = (isCod && codFee > 0) ? 'flex' : 'none';
+
+      const finalTotal = isCod ? baseTotal + codFee : baseTotal;
+      totalEl.textContent = finalTotal.toLocaleString('tr-TR') + ' ₺';
     }
 
     // IBAN kopyala
@@ -386,6 +602,14 @@
       if (citySelect.value) localStorage.setItem('co_city', citySelect.value);
       if (districtSelect.value) localStorage.setItem('co_district', districtSelect.value);
     });
+
+    // Sayfa yuklendiginde varsayilan odeme yontemine gore toplami guncelle
+    (function() {
+      var checkedRadio = document.querySelector('input[name="payment_method"]:checked');
+      if (checkedRadio) {
+        showPaymentInfo(checkedRadio.value);
+      }
+    })();
   </script>
 </body>
 </html>

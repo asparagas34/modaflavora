@@ -7,6 +7,7 @@ const { trackEvent } = require('../tracker');
 const capi = require('../meta-capi');
 const { sendMail, orderConfirmationEmail } = require('../mailer');
 const { logCheckoutVisit, markCartRecovered } = require('../abandoned-cart');
+const shopierCheckout = require('../shopier-checkout');
 // Homepage
 router.get('/', (req, res) => {
   const categories = db.prepare(
@@ -240,10 +241,21 @@ router.post('/siparis', (req, res) => {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const freeShippingLimit = parseFloat(settings.free_shipping_limit) || 2000;
   const shippingCost = subtotal >= freeShippingLimit ? 0 : parseFloat(settings.shipping_cost) || 49.90;
-  const total = subtotal + shippingCost;
 
   const pm = payment_method || 'eft';
-  const initialStatus = pm === 'eft' ? 'pending_payment' : 'pending';
+  const isCod = pm === 'cod_cash' || pm === 'cod_card' || pm === 'cod';
+
+  // Kapida odeme minimum tutar kontrolu
+  if (isCod) {
+    const codMinAmount = parseFloat(settings.cod_min_amount) || 0;
+    if (codMinAmount > 0 && subtotal < codMinAmount) {
+      return res.redirect('/sepet?hata=Kapida+odeme+icin+minimum+sepet+tutari+' + codMinAmount + '+TL+olmalidir');
+    }
+  }
+
+  const codFee = isCod ? (parseFloat(settings.cod_fee) || 0) : 0;
+  const total = subtotal + shippingCost + codFee;
+  const initialStatus = (pm === 'eft' || pm === 'card') ? 'pending_payment' : 'pending';
   const crypto = require('crypto');
   const paymentToken = crypto.randomBytes(32).toString('hex');
 
@@ -270,7 +282,7 @@ router.post('/siparis', (req, res) => {
   trackEvent('order', total, req);
   // CAPI Purchase event: sadece kapida odeme ise hemen tetikle
   // EFT/havale icin admin onayladiginda tetiklenecek
-  if (pm === 'cod') {
+  if (isCod) {
     try {
       const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
       const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);
@@ -292,9 +304,32 @@ router.post('/siparis', (req, res) => {
   try { markCartRecovered(email); } catch (e) {}
 
   req.session.cart = [];
-  if (pm === 'cod') {
+  if (isCod) {
     // Kapıda ödeme: doğrudan tebrikler sayfasına
     res.redirect('/siparis/tebrikler?id=' + orderId);
+  } else if (pm === 'card') {
+    // Kredi kartı: Shopier ödeme sayfasına yönlendir
+    (async () => {
+      try {
+        const itemNames = cart.map(i => i.name + (i.size ? ' (' + i.size + ')' : '')).join(', ');
+        const desc = `${itemNames} — Sipariş #${orderId}`;
+
+        const { shopierProductId } = await shopierCheckout.createPaymentProduct(orderId, total, desc);
+
+        // Store shopier product ID for cleanup later
+        db.prepare('UPDATE orders SET payment_token = ? WHERE id = ?')
+          .run('shopier:' + shopierProductId, orderId);
+
+        const html = shopierCheckout.generateCheckoutRedirectHTML(shopierProductId, { orderId, total: total.toLocaleString('tr-TR') });
+        res.send(html);
+      } catch (err) {
+        console.error('[Shopier Checkout]', err.message);
+        // Fallback to EFT if Shopier fails
+        db.prepare("UPDATE orders SET payment_method = 'eft' WHERE id = ?").run(orderId);
+        req.session.lastOrder = { orderId, total, paymentMethod: 'eft' };
+        res.redirect('/siparis/tamamlandi?shopier_hata=1');
+      }
+    })();
   } else {
     // EFT: ödeme bekleme sayfasına
     req.session.lastOrder = { orderId, total, paymentMethod: pm };
