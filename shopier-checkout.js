@@ -14,7 +14,7 @@ const crypto = require('crypto');
 
 // Shopier API credentials - reads from DB settings or env var
 const SHOPIER_STORE = 'modaflavora';
-const SHOPIER_API_BASE = 'https://api.shopier.com/api/v1';
+const SHOPIER_API_BASE = 'https://api.shopier.com/v1';
 
 function getShopierPAT() {
   // Try DB settings first, then env var
@@ -32,69 +32,66 @@ const OSB_PASSWORD = process.env.SHOPIER_OSB_PASSWORD || '8da73e363a27193b260015
 
 /**
  * Create a temporary product on Shopier for this order's payment
- * @param {number} orderId - Our order ID
- * @param {number} totalAmount - Order total in TL (e.g., 800.24)
- * @param {string} description - Order description
- * @returns {Promise<{shopierProductId: string, shopierProductUrl: string}>}
+ * @param {string} orderId - Our order ID
+ * @param {number} totalAmount - Total in TL (e.g. 150.00)
+ * @param {string} description - Product description
+ * @returns {object} { shopierProductId }
  */
 async function createPaymentProduct(orderId, totalAmount, description) {
-  const SHOPIER_PAT = getShopierPAT();
-  if (!SHOPIER_PAT) throw new Error('Shopier API token (PAT) ayarlanmamış. Admin > Ayarlar > Kredi Kartı bölümünden girin.');
+  const pat = getShopierPAT();
+  if (!pat) throw new Error('Shopier PAT bulunamadi');
 
-  // Price in kuruş (cents)
-  const priceInKurus = Math.round(totalAmount * 100);
-
-  const productData = {
-    title: `Sipariş #${orderId}`,
-    description: description || `ModaFlavora sipariş ödemesi #${orderId}`,
-    price: priceInKurus,
-    stock: 1,
-    is_active: true,
-    categories: []
+  const headers = {
+    'Authorization': `Bearer ${pat}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
   };
 
-  try {
-    const resp = await axios.post(`${SHOPIER_API_BASE}/products`, productData, {
-      headers: {
-        'Authorization': `Bearer ${SHOPIER_PAT}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      timeout: 15000
-    });
+  console.log('[Shopier] Urun olusturuluyor: Siparis #' + orderId + ' (' + totalAmount + ' TL)');
 
-    const product = resp.data.data || resp.data;
-    const productId = product.id || product.product_id;
+  const resp = await axios.post(`${SHOPIER_API_BASE}/products`, {
+    title: 'ModaFlavora Odeme',
+    description: description || 'ModaFlavora online odeme',
+    type: 'physical',
+    stockQuantity: 100,
+    is_active: true,
+    media: [{ type: 'image', url: 'https://modaflavora.com/img/payment.jpg', placement: 1 }],
+    priceData: { price: totalAmount, currency: 'TRY' },
+    shippingPayer: 'sellerPays'
+  }, { headers, timeout: 15000 });
 
-    return {
-      shopierProductId: String(productId),
-      shopierProductUrl: `https://www.shopier.com/${productId}`
-    };
-  } catch (err) {
-    console.error('[Shopier] Create payment product error:', err.response?.data || err.message);
-    throw new Error('Shopier ödeme ürünü oluşturulamadı: ' + (err.response?.data?.message || err.message));
+  const product = resp.data.data || resp.data;
+  const productId = product.id || product.product_id;
+
+  if (!productId) {
+    throw new Error('Shopier urun ID alinamadi: ' + JSON.stringify(resp.data));
   }
+
+  console.log('[Shopier] Urun olusturuldu: ' + productId);
+  return { shopierProductId: String(productId) };
 }
 
 /**
- * Delete a temporary payment product from Shopier
- * @param {string} shopierProductId
+ * Delete the temporary payment product from Shopier
+ * @param {string} shopierProductId - Product ID to delete
  */
 async function deletePaymentProduct(shopierProductId) {
-  const SHOPIER_PAT = getShopierPAT();
-  if (!SHOPIER_PAT || !shopierProductId) return;
+  const pat = getShopierPAT();
+  if (!pat) return;
+
+  const headers = {
+    'Authorization': `Bearer ${pat}`,
+    'Content-Type': 'application/json'
+  };
 
   try {
     await axios.delete(`${SHOPIER_API_BASE}/products/${shopierProductId}`, {
-      headers: {
-        'Authorization': `Bearer ${SHOPIER_PAT}`,
-        'Accept': 'application/json'
-      },
+      headers: headers,
       timeout: 10000
     });
-    console.log('[Shopier] Deleted payment product:', shopierProductId);
+    console.log('[Shopier] Urun silindi: ' + shopierProductId);
   } catch (err) {
-    console.error('[Shopier] Delete payment product error:', err.response?.data || err.message);
+    console.log('[Shopier] Urun silinemedi: ' + shopierProductId + ' - ' + err.message);
   }
 }
 
